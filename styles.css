@@ -1,0 +1,579 @@
+/* ==========================================================================
+   BiDi Flow Navigator — Sleek Bidirectional Document Navigator for Obsidian
+   ========================================================================== */
+
+/* Root Typography and BiDi Variables */
+.bidi-flow-navigator {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  font-family: var(--font-interface), 'Vazirmatn', 'Shabnam', 'Sahel', 'IRANSans', system-ui, -apple-system, sans-serif;
+  color: var(--text-normal);
+  background: var(--background-primary);
+  font-size: var(--font-ui-smaller, 12px);
+  user-select: none;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   Header Bar: Controls, Current Section & Progress
+   ========================================================================== */
+
+.bidi-flow-header {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 10px 6px;
+  background-color: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  gap: 6px;
+}
+
+/* Top Branding & Mode Control Bar */
+.bidi-flow-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 4px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.bidi-flow-brand {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-accent);
+  letter-spacing: -0.01em;
+}
+
+.bidi-flow-brand-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--interactive-accent);
+}
+
+.bidi-flow-brand-icon svg {
+  width: 13px;
+  height: 13px;
+}
+
+.bidi-flow-window-controls {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.bidi-flow-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  padding: 0;
+  border-radius: var(--radius-s);
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bidi-flow-btn:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border);
+  transform: translateY(-1px);
+}
+
+.bidi-flow-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.bidi-flow-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+/* Section Jump Buttons (Prev / Next) */
+.bidi-flow-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.bidi-flow-nav-btn:hover:not(.is-disabled) {
+  background-color: var(--background-modifier-hover);
+  color: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  transform: translateY(-1px);
+}
+
+.bidi-flow-nav-btn.is-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Current Section Badge */
+.bidi-flow-current-badge {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.bidi-flow-badge-level {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: var(--radius-s);
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  line-height: 1.2;
+}
+
+.bidi-flow-current-title {
+  flex: 1;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-normal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: start;
+  line-height: 1.3;
+}
+
+.bidi-flow-counter {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+/* Reading Progress Bar */
+.bidi-flow-progress-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.bidi-flow-progress-track {
+  flex: 1;
+  height: 4px;
+  background-color: var(--background-modifier-border);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.bidi-flow-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--interactive-accent), var(--text-accent-hover));
+  border-radius: 999px;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bidi-flow-progress-text {
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  min-width: 28px;
+  text-align: end;
+}
+
+/* ==========================================================================
+   Search / Filter Bar
+   ========================================================================== */
+
+.bidi-flow-search-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background-color: var(--background-secondary-alt);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.bidi-flow-search-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.bidi-flow-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 2px 4px;
+  font-size: 11.5px;
+  color: var(--text-normal);
+  font-family: inherit;
+}
+
+.bidi-flow-search-input:focus {
+  outline: none;
+}
+
+.bidi-flow-search-input::placeholder {
+  color: var(--text-faint);
+}
+
+.bidi-flow-search-clear {
+  color: var(--text-faint);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: var(--radius-s);
+}
+
+.bidi-flow-search-clear:hover {
+  color: var(--text-normal);
+  background-color: var(--background-modifier-hover);
+}
+
+/* ==========================================================================
+   Heading Tree Container & Nodes
+   ========================================================================== */
+
+.bidi-flow-tree-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 6px 4px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bidi-flow-children-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Tree Node Item */
+.bidi-flow-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  margin-inline-start: var(--bidi-indent, 0px);
+  border-radius: var(--radius-s);
+  border-inline-start: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.14s ease-out;
+  min-height: 26px;
+  box-sizing: border-box;
+}
+
+.bidi-flow-tree-node:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+/* Active Heading Highlight & Accent Glow */
+.bidi-flow-tree-node.is-active {
+  background-color: var(--background-modifier-active-hover);
+  border-inline-start-color: var(--interactive-accent);
+  box-shadow: inset 1px 0 6px rgba(var(--interactive-accent-rgb), 0.12);
+}
+
+.bidi-flow-tree-node.is-active .bidi-flow-node-title {
+  color: var(--interactive-accent);
+  font-weight: 600;
+}
+
+.bidi-flow-tree-node.is-active .bidi-flow-level-pill {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+/* Toggle Fold Icon */
+.bidi-flow-toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  color: var(--text-faint);
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.bidi-flow-toggle-icon:hover {
+  color: var(--text-normal);
+  background-color: var(--background-modifier-hover);
+}
+
+.bidi-flow-toggle-icon.is-leaf {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Level Badges */
+.bidi-flow-level-pill {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: var(--radius-s);
+  background-color: var(--background-modifier-border);
+  color: var(--text-muted);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bidi-flow-level-pill.level-1 {
+  background-color: rgba(var(--interactive-accent-rgb), 0.18);
+  color: var(--interactive-accent);
+}
+
+/* Heading Text & Bidirectional Handling */
+.bidi-flow-node-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: start;
+  line-height: 1.35;
+  font-size: 12px;
+  color: var(--text-normal);
+  unicode-bidi: plaintext;
+  overflow-wrap: anywhere;
+}
+
+.bidi-flow-node-title.is-rtl {
+  direction: rtl;
+  text-align: right;
+  font-feature-settings: "kern" 1;
+}
+
+.bidi-flow-node-title.is-ltr {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Empty State */
+.bidi-flow-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* ==========================================================================
+   Floating Widget Overlay
+   ========================================================================== */
+
+.bidi-floating-navigator {
+  position: absolute;
+  z-index: var(--layer-popover, 30);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.bidi-floating-navigator > * {
+  pointer-events: auto;
+}
+
+/* Right Side Positioning */
+.bidi-floating-navigator.is-side-right {
+  right: 18px;
+  left: auto;
+  align-items: flex-end;
+}
+
+/* Left Side Positioning */
+.bidi-floating-navigator.is-side-left {
+  left: 18px;
+  right: auto;
+  align-items: flex-start;
+}
+
+/* Mode 1: Mini (Compact Pill Button) */
+.bidi-floating-navigator.is-mode-mini {
+  top: 48px;
+  width: auto;
+  height: auto;
+}
+
+.bidi-floating-navigator.is-mode-mini .bidi-floating-card {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.95);
+  pointer-events: none;
+  display: none !important;
+}
+
+.bidi-floating-navigator.is-mode-mini .bidi-floating-toggle-btn {
+  display: flex !important;
+}
+
+/* When in Floating or Full-Height, hide the pill button */
+.bidi-floating-navigator.is-mode-floating .bidi-floating-toggle-btn,
+.bidi-floating-navigator.is-mode-full-height .bidi-floating-toggle-btn {
+  display: none !important;
+}
+
+/* Mode 2: Floating Card Window */
+.bidi-floating-navigator.is-mode-floating {
+  top: 48px;
+  bottom: auto;
+  height: auto;
+}
+
+.bidi-floating-navigator.is-mode-floating .bidi-floating-card {
+  display: flex;
+  flex-direction: column;
+  max-height: 490px;
+  height: auto;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.18), 0 3px 10px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  overflow: hidden;
+}
+
+/* Mode 3: Full-Height Rail (Spanning entire page height) */
+.bidi-floating-navigator.is-mode-full-height {
+  top: 0 !important;
+  bottom: 0 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+.bidi-floating-navigator.is-mode-full-height.is-side-right {
+  right: 0 !important;
+  left: auto !important;
+  align-items: stretch;
+}
+
+.bidi-floating-navigator.is-mode-full-height.is-side-left {
+  left: 0 !important;
+  right: auto !important;
+  align-items: stretch;
+}
+
+.bidi-floating-navigator.is-mode-full-height .bidi-floating-card {
+  display: flex;
+  flex-direction: column;
+  height: 100% !important;
+  max-height: 100% !important;
+  border-radius: 0 !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  border-right: none !important;
+  border-left: 1px solid var(--background-modifier-border) !important;
+  background-color: var(--background-primary);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  overflow: hidden;
+}
+
+.bidi-floating-navigator.is-mode-full-height.is-side-left .bidi-floating-card {
+  border-left: none !important;
+  border-right: 1px solid var(--background-modifier-border) !important;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Floating Toggle Button (Compass Pill) */
+.bidi-floating-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-bottom: 6px;
+  transition: all 0.18s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.bidi-floating-toggle-btn:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--interactive-accent);
+  transform: scale(1.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* Collapsed State Fallback */
+.bidi-floating-navigator.is-collapsed .bidi-floating-card {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.96);
+  pointer-events: none;
+  display: none !important;
+}
+
+.bidi-floating-navigator.is-collapsed .bidi-floating-toggle-btn {
+  display: flex !important;
+}
+
+/* ==========================================================================
+   Sidebar View Container
+   ========================================================================== */
+
+.bidi-sidebar-container {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Custom Scrollbar for Tree */
+.bidi-flow-tree-container::-webkit-scrollbar {
+  width: 5px;
+}
+
+.bidi-flow-tree-container::-webkit-scrollbar-thumb {
+  background-color: var(--background-modifier-border);
+  border-radius: 4px;
+}
+
+.bidi-flow-tree-container::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-faint);
+}

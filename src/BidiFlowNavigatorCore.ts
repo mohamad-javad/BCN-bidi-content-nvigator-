@@ -1,0 +1,699 @@
+import {
+  Component,
+  MarkdownView,
+  setIcon,
+  setTooltip,
+  debounce,
+  HeadingCache
+} from 'obsidian';
+import { BidiHeadingNode, BidiFlowSettings, SectionNavigationDirection, SurroundingHeadings, NavigatorDisplayMode } from './types';
+import { cleanHeadingText, toPersianDigits, isRtlText } from './utils';
+import { getActiveHeading, getSurroundingHeadings, scrollToHeading } from './scrollSpy';
+import { t } from './i18n';
+
+export class BidiFlowNavigatorCore extends Component {
+  public containerEl: HTMLElement;
+  private settings: BidiFlowSettings;
+
+  // Header Elements
+  private headerEl!: HTMLElement;
+  private topBarEl?: HTMLElement;
+  private modeToggleBtn?: HTMLButtonElement;
+  private collapseBtn?: HTMLButtonElement;
+  private prevBtnEl!: HTMLButtonElement;
+  private nextBtnEl!: HTMLButtonElement;
+  private currentBadgeEl!: HTMLElement;
+  private currentLevelEl!: HTMLElement;
+  private currentTitleEl!: HTMLElement;
+  private counterEl!: HTMLElement;
+
+  // Progress Bar
+  private progressBarEl!: HTMLElement;
+  private progressFillEl!: HTMLElement;
+  private progressTextEl!: HTMLElement;
+
+  // Search Elements
+  private searchContainerEl!: HTMLElement;
+  private searchInputEl!: HTMLInputElement;
+
+  // Tree Elements
+  private treeContainerEl!: HTMLElement;
+  private emptyStateEl!: HTMLElement;
+
+  // Data & State
+  private rawHeadings: HeadingCache[] = [];
+  private rootNodes: BidiHeadingNode[] = [];
+  private flatNodes: BidiHeadingNode[] = [];
+  private activeHeading: HeadingCache | null = null;
+  private activeIndex: number = -1;
+  private searchQuery: string = '';
+  private currentView: MarkdownView | null = null;
+  private headingElementMap: Map<string, HTMLElement> = new Map();
+  private scrollCleanup: (() => void) | null = null;
+  private rafId: number | null = null;
+
+  constructor(containerEl: HTMLElement, settings: BidiFlowSettings) {
+    super();
+    this.containerEl = containerEl;
+    this.settings = settings;
+  }
+
+  // Window Control State
+  private onToggleMaximizeCallback?: () => void;
+  private onCollapseCallback?: () => void;
+  private hideWindowControlsFlag = false;
+  private currentWindowMode: NavigatorDisplayMode = 'floating';
+
+  public onload(): void {
+    this.buildSkeleton();
+    this.registerDomEvents();
+  }
+
+  public updateSettings(newSettings: BidiFlowSettings): void {
+    const langChanged = this.settings.uiLanguage !== newSettings.uiLanguage;
+    this.settings = newSettings;
+    if (langChanged) {
+      this.buildSkeleton();
+      this.registerDomEvents();
+      this.updateWindowControls(this.currentWindowMode);
+    }
+    if (this.searchContainerEl) {
+      this.searchContainerEl.toggleVisibility(this.settings.showSearch);
+    }
+    if (this.progressBarEl) {
+      this.progressBarEl.toggleVisibility(this.settings.showProgressBar);
+    }
+    this.refreshHeadings();
+  }
+
+  private buildSkeleton(): void {
+    const tr = t(this.settings.uiLanguage);
+    this.containerEl.empty();
+    this.containerEl.addClass('bidi-flow-navigator');
+
+    // 1. Header Bar
+    this.headerEl = this.containerEl.createDiv({ cls: 'bidi-flow-header' });
+
+    // Top Bar (Branding & Mode Switching Controls)
+    this.topBarEl = this.headerEl.createDiv({ cls: 'bidi-flow-top-bar' });
+    if (this.hideWindowControlsFlag) {
+      this.topBarEl.hide();
+    }
+    const brandEl = this.topBarEl.createDiv({ cls: 'bidi-flow-brand' });
+    const brandIcon = brandEl.createSpan({ cls: 'bidi-flow-brand-icon' });
+    setIcon(brandIcon, 'compass');
+    brandEl.createSpan({ cls: 'bidi-flow-brand-text', text: tr.brand });
+
+    const windowControlsEl = this.topBarEl.createDiv({ cls: 'bidi-flow-window-controls' });
+    this.modeToggleBtn = windowControlsEl.createEl('button', {
+      cls: 'clickable-icon bidi-flow-btn bidi-flow-btn-mode',
+      attr: { 'aria-label': tr.toggleHeightFull }
+    });
+    setIcon(this.modeToggleBtn, this.currentWindowMode === 'full-height' ? 'minimize-2' : 'maximize-2');
+    setTooltip(this.modeToggleBtn, this.currentWindowMode === 'full-height' ? tr.toggleHeightFloating : tr.toggleHeightFull);
+    if (this.onToggleMaximizeCallback) {
+      this.modeToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.onToggleMaximizeCallback?.();
+      });
+    }
+
+    this.collapseBtn = windowControlsEl.createEl('button', {
+      cls: 'clickable-icon bidi-flow-btn bidi-flow-btn-collapse',
+      attr: { 'aria-label': tr.minimize }
+    });
+    setIcon(this.collapseBtn, 'minus');
+    setTooltip(this.collapseBtn, tr.minimize);
+    if (this.onCollapseCallback) {
+      this.collapseBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.onCollapseCallback?.();
+      });
+    }
+
+    // Controls Row (Prev / Current / Next)
+    const controlsRow = this.headerEl.createDiv({ cls: 'bidi-flow-controls-row' });
+
+    // Prev Button
+    this.prevBtnEl = controlsRow.createEl('button', {
+      cls: 'clickable-icon bidi-flow-nav-btn bidi-flow-prev-btn',
+      attr: { 'aria-label': tr.prevSection }
+    });
+    setIcon(this.prevBtnEl, 'chevron-left');
+    setTooltip(this.prevBtnEl, tr.prevSection);
+
+    // Current Section Badge
+    this.currentBadgeEl = controlsRow.createDiv({ cls: 'bidi-flow-current-badge' });
+    this.currentLevelEl = this.currentBadgeEl.createSpan({
+      cls: 'bidi-flow-badge-level',
+      text: '—'
+    });
+    this.currentTitleEl = this.currentBadgeEl.createSpan({
+      cls: 'bidi-flow-current-title',
+      text: tr.noActiveSection,
+      attr: { dir: 'auto' }
+    });
+    this.counterEl = this.currentBadgeEl.createSpan({
+      cls: 'bidi-flow-counter',
+      text: '0/0'
+    });
+
+    // Next Button
+    this.nextBtnEl = controlsRow.createEl('button', {
+      cls: 'clickable-icon bidi-flow-nav-btn bidi-flow-next-btn',
+      attr: { 'aria-label': tr.nextSection }
+    });
+    setIcon(this.nextBtnEl, 'chevron-right');
+    setTooltip(this.nextBtnEl, tr.nextSection);
+
+    // 2. Reading Progress Bar
+    this.progressBarEl = this.headerEl.createDiv({ cls: 'bidi-flow-progress-wrapper' });
+    if (!this.settings.showProgressBar) {
+      this.progressBarEl.hide();
+    }
+    const track = this.progressBarEl.createDiv({ cls: 'bidi-flow-progress-track' });
+    this.progressFillEl = track.createDiv({ cls: 'bidi-flow-progress-fill' });
+    this.progressFillEl.style.width = '0%';
+    this.progressTextEl = this.progressBarEl.createSpan({
+      cls: 'bidi-flow-progress-text',
+      text: (this.settings.uiLanguage === 'fa' && this.settings.persianNumerals) ? '۰٪' : '0%'
+    });
+
+    // 3. Search / Filter Box
+    this.searchContainerEl = this.containerEl.createDiv({ cls: 'bidi-flow-search-box' });
+    if (!this.settings.showSearch) {
+      this.searchContainerEl.hide();
+    }
+
+    const searchIcon = this.searchContainerEl.createSpan({ cls: 'bidi-flow-search-icon' });
+    setIcon(searchIcon, 'search');
+
+    this.searchInputEl = this.searchContainerEl.createEl('input', {
+      type: 'search',
+      cls: 'bidi-flow-search-input',
+      placeholder: tr.filterPlaceholder,
+      attr: { dir: 'auto', spellcheck: 'false' }
+    });
+
+    const clearBtn = this.searchContainerEl.createSpan({
+      cls: 'clickable-icon bidi-flow-search-clear'
+    });
+    setIcon(clearBtn, 'x');
+    clearBtn.addEventListener('click', () => {
+      this.searchInputEl.value = '';
+      this.onSearchChanged('');
+    });
+
+    // 4. Tree Container
+    this.treeContainerEl = this.containerEl.createDiv({ cls: 'bidi-flow-tree-container' });
+
+    // Empty state container
+    this.emptyStateEl = this.containerEl.createDiv({
+      cls: 'bidi-flow-empty-state',
+      text: tr.noHeadings
+    });
+    this.emptyStateEl.hide();
+  }
+
+  private registerDomEvents(): void {
+    // Navigation jumps
+    this.prevBtnEl.addEventListener('click', () => this.jumpSection('prev'));
+    this.nextBtnEl.addEventListener('click', () => this.jumpSection('next'));
+
+    // Search filter
+    const debouncedFilter = debounce((query: string) => {
+      this.onSearchChanged(query);
+    }, 100, true);
+
+    this.searchInputEl.addEventListener('input', (e) => {
+      debouncedFilter((e.target as HTMLInputElement).value);
+    });
+  }
+
+  public setView(view: MarkdownView | null): void {
+    if (this.currentView === view && view !== null) {
+      this.refreshHeadings();
+      return;
+    }
+
+    this.detachScrollListener();
+    this.currentView = view;
+
+    if (!view) {
+      this.clear();
+      return;
+    }
+
+    this.refreshHeadings();
+    this.attachScrollListener();
+  }
+
+  public refreshHeadings(): void {
+    if (!this.currentView) {
+      this.clear();
+      return;
+    }
+
+    const file = this.currentView.file;
+    if (!file) {
+      this.clear();
+      return;
+    }
+
+    const metadata = this.currentView.app.metadataCache.getFileCache(file);
+    const raw = metadata?.headings ?? [];
+
+    // Filter by maxHeadingLevel
+    this.rawHeadings = raw.filter(h => h.level <= this.settings.maxHeadingLevel);
+
+    if (this.rawHeadings.length === 0) {
+      this.rootNodes = [];
+      this.flatNodes = [];
+      this.activeHeading = null;
+      this.activeIndex = -1;
+      this.treeContainerEl.empty();
+      this.emptyStateEl.show();
+      this.updateHeaderDisplay(null);
+      this.updateProgressBar(0);
+      return;
+    }
+
+    this.emptyStateEl.hide();
+    this.buildHeadingTree(this.rawHeadings);
+    this.renderTree();
+    this.syncActiveHeading();
+  }
+
+  private buildHeadingTree(headings: HeadingCache[]): void {
+    this.rootNodes = [];
+    this.flatNodes = [];
+    const stack: BidiHeadingNode[] = [];
+
+    const tr = t(this.settings.uiLanguage);
+    headings.forEach((heading, idx) => {
+      const cleaned = cleanHeadingText(heading.heading) || tr.untitled;
+      const node: BidiHeadingNode = {
+        id: `bidi-h-${heading.position.start.line}-${idx}`,
+        heading,
+        level: heading.level,
+        text: cleaned,
+        line: heading.position.start.line,
+        parent: null,
+        children: [],
+        isCollapsed: false,
+        isVisible: true
+      };
+
+      this.flatNodes.push(node);
+
+      while (stack.length > 0 && stack[stack.length - 1].level >= node.level) {
+        stack.pop();
+      }
+
+      if (stack.length === 0) {
+        this.rootNodes.push(node);
+      } else {
+        node.parent = stack[stack.length - 1];
+        stack[stack.length - 1].children.push(node);
+      }
+
+      stack.push(node);
+    });
+  }
+
+  private renderTree(): void {
+    this.treeContainerEl.empty();
+    this.headingElementMap.clear();
+
+    const renderBranch = (nodes: BidiHeadingNode[], parentEl: HTMLElement) => {
+      for (const node of nodes) {
+        if (!node.isVisible) continue;
+
+        const rowEl = parentEl.createDiv({
+          cls: `bidi-flow-tree-node bidi-level-${node.level}`,
+          attr: {
+            'data-heading-id': node.id,
+            'data-line': node.line.toString()
+          }
+        });
+
+        // Set logical indentation CSS variable
+        const indentPx = (node.level - 1) * this.settings.indentStepPx;
+        rowEl.style.setProperty('--bidi-indent', `${indentPx}px`);
+
+        // Collapse / Expand toggle button
+        const toggleEl = rowEl.createSpan({ cls: 'bidi-flow-toggle-icon' });
+        if (node.children.length > 0) {
+          setIcon(toggleEl, node.isCollapsed ? 'chevron-right' : 'chevron-down');
+          toggleEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            node.isCollapsed = !node.isCollapsed;
+            this.renderTree();
+          });
+        } else {
+          toggleEl.addClass('is-leaf');
+        }
+
+        // Level Badge (H1, H2 or ۱, ۲)
+        if (this.settings.showLevelBadge) {
+          const badgeText = this.settings.persianNumerals
+            ? `H${toPersianDigits(node.level, true)}`
+            : `H${node.level}`;
+          rowEl.createSpan({
+            cls: `bidi-flow-level-pill level-${node.level}`,
+            text: badgeText
+          });
+        }
+
+        // Heading Title with dir="auto"
+        const isRtl = isRtlText(node.text);
+        const titleSpan = rowEl.createSpan({
+          cls: `bidi-flow-node-title ${isRtl ? 'is-rtl' : 'is-ltr'}`,
+          text: node.text,
+          attr: { dir: 'auto' }
+        });
+
+        // Tooltip displaying complete title for long words / titles
+        setTooltip(rowEl, `[H${node.level}] ${node.text}`);
+
+        this.headingElementMap.set(node.id, rowEl);
+
+        // Click handler to jump to section
+        rowEl.addEventListener('click', () => {
+          if (this.currentView) {
+            scrollToHeading(this.currentView, node.heading, 'smooth');
+          }
+        });
+
+        // Render children if expanded
+        if (node.children.length > 0 && !node.isCollapsed) {
+          const childContainer = parentEl.createDiv({ cls: 'bidi-flow-children-container' });
+          renderBranch(node.children, childContainer);
+        }
+      }
+    };
+
+    renderBranch(this.rootNodes, this.treeContainerEl);
+
+    // Re-highlight active node
+    if (this.activeIndex >= 0 && this.flatNodes[this.activeIndex]) {
+      this.highlightNode(this.flatNodes[this.activeIndex]);
+    }
+  }
+
+  private onSearchChanged(query: string): void {
+    this.searchQuery = query.trim().toLowerCase();
+
+    if (!this.searchQuery) {
+      this.flatNodes.forEach(n => (n.isVisible = true));
+      this.renderTree();
+      return;
+    }
+
+    const filterNode = (node: BidiHeadingNode): boolean => {
+      const matchSelf = node.text.toLowerCase().includes(this.searchQuery);
+      let matchChild = false;
+
+      for (const child of node.children) {
+        if (filterNode(child)) {
+          matchChild = true;
+        }
+      }
+
+      node.isVisible = matchSelf || matchChild;
+      if (matchChild) {
+        node.isCollapsed = false; // Auto-expand matching branches
+      }
+      return node.isVisible;
+    };
+
+    for (const root of this.rootNodes) {
+      filterNode(root);
+    }
+
+    this.renderTree();
+  }
+
+  private attachScrollListener(): void {
+    this.detachScrollListener();
+    if (!this.currentView) return;
+
+    let targetEl: HTMLElement | null = null;
+    const mode = this.currentView.getMode();
+
+    if (mode === 'preview') {
+      targetEl = this.currentView.previewMode?.containerEl ?? null;
+    } else {
+      targetEl = this.currentView.contentEl.querySelector('.cm-scroller') as HTMLElement;
+    }
+
+    if (!targetEl) return;
+
+    const onScroll = () => {
+      if (this.rafId !== null) return;
+      this.rafId = window.requestAnimationFrame(() => {
+        this.rafId = null;
+        this.syncActiveHeading();
+      });
+    };
+
+    targetEl.addEventListener('scroll', onScroll, { passive: true });
+    this.scrollCleanup = () => {
+      targetEl?.removeEventListener('scroll', onScroll);
+    };
+
+    // Initial sync
+    onScroll();
+  }
+
+  private detachScrollListener(): void {
+    if (this.rafId !== null) {
+      window.cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    if (this.scrollCleanup) {
+      this.scrollCleanup();
+      this.scrollCleanup = null;
+    }
+  }
+
+  private syncActiveHeading(): void {
+    if (!this.currentView || this.rawHeadings.length === 0) return;
+
+    const active = getActiveHeading(this.currentView, this.rawHeadings, 60);
+    this.activeHeading = active;
+
+    const surrounding = getSurroundingHeadings(this.rawHeadings, active);
+    this.activeIndex = surrounding.activeIndex;
+
+    this.updateHeaderDisplay(surrounding);
+    this.highlightActiveInTree();
+    this.calculateReadingProgress();
+  }
+
+  private updateHeaderDisplay(surrounding: SurroundingHeadings | null): void {
+    const tr = t(this.settings.uiLanguage);
+    const usePersianDigits = this.settings.uiLanguage === 'fa' && this.settings.persianNumerals;
+
+    if (!surrounding || !surrounding.active) {
+      this.currentLevelEl.setText('—');
+      this.currentTitleEl.setText(tr.noActiveSection);
+      this.counterEl.setText(usePersianDigits ? '۰/۰' : '0/0');
+      this.prevBtnEl.disabled = true;
+      this.nextBtnEl.disabled = true;
+      this.prevBtnEl.addClass('is-disabled');
+      this.nextBtnEl.addClass('is-disabled');
+      setTooltip(this.prevBtnEl, tr.docStart);
+      setTooltip(this.nextBtnEl, tr.docEnd);
+      return;
+    }
+
+    const { active, prev, next, activeIndex, totalCount } = surrounding;
+
+    // Level badge
+    const lvlText = usePersianDigits
+      ? `H${toPersianDigits(active.level, true)}`
+      : `H${active.level}`;
+    this.currentLevelEl.setText(lvlText);
+
+    // Title
+    const cleanedTitle = cleanHeadingText(active.heading) || tr.untitled;
+    this.currentTitleEl.setText(cleanedTitle);
+    setTooltip(this.currentBadgeEl, `[H${active.level}] ${cleanedTitle}`);
+
+    // Section counter
+    const idxNum = activeIndex + 1;
+    const counterStr = usePersianDigits
+      ? `${toPersianDigits(idxNum, true)} / ${toPersianDigits(totalCount, true)}`
+      : `${idxNum} / ${totalCount}`;
+    this.counterEl.setText(counterStr);
+
+    // Prev / Next button states & tooltips
+    if (prev) {
+      this.prevBtnEl.disabled = false;
+      this.prevBtnEl.removeClass('is-disabled');
+      const prevTitle = cleanHeadingText(prev.heading) || tr.untitled;
+      setTooltip(this.prevBtnEl, tr.prevTooltip(prevTitle, prev.level));
+    } else {
+      this.prevBtnEl.disabled = true;
+      this.prevBtnEl.addClass('is-disabled');
+      setTooltip(this.prevBtnEl, tr.docStart);
+    }
+
+    if (next) {
+      this.nextBtnEl.disabled = false;
+      this.nextBtnEl.removeClass('is-disabled');
+      const nextTitle = cleanHeadingText(next.heading) || tr.untitled;
+      setTooltip(this.nextBtnEl, tr.nextTooltip(nextTitle, next.level));
+    } else {
+      this.nextBtnEl.disabled = true;
+      this.nextBtnEl.addClass('is-disabled');
+      setTooltip(this.nextBtnEl, tr.docEnd);
+    }
+  }
+
+  private highlightActiveInTree(): void {
+    // Remove active class from all
+    for (const el of this.headingElementMap.values()) {
+      el.removeClass('is-active');
+    }
+
+    if (this.activeIndex >= 0 && this.flatNodes[this.activeIndex]) {
+      const activeNode = this.flatNodes[this.activeIndex];
+      this.highlightNode(activeNode);
+    }
+  }
+
+  private highlightNode(node: BidiHeadingNode): void {
+    const el = this.headingElementMap.get(node.id);
+    if (el) {
+      el.addClass('is-active');
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  public setWindowControlHandlers(
+    onToggleMaximize: () => void,
+    onCollapse: () => void
+  ): void {
+    this.onToggleMaximizeCallback = onToggleMaximize;
+    this.onCollapseCallback = onCollapse;
+    if (this.modeToggleBtn) {
+      this.modeToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onToggleMaximize();
+      });
+    }
+    if (this.collapseBtn) {
+      this.collapseBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onCollapse();
+      });
+    }
+  }
+
+  public updateWindowControls(mode: NavigatorDisplayMode): void {
+    this.currentWindowMode = mode;
+    if (!this.modeToggleBtn) return;
+    const tr = t(this.settings.uiLanguage);
+    if (mode === 'full-height') {
+      setIcon(this.modeToggleBtn, 'minimize-2');
+      setTooltip(this.modeToggleBtn, tr.toggleHeightFloating);
+    } else {
+      setIcon(this.modeToggleBtn, 'maximize-2');
+      setTooltip(this.modeToggleBtn, tr.toggleHeightFull);
+    }
+  }
+
+  public hideWindowControls(): void {
+    this.hideWindowControlsFlag = true;
+    if (this.topBarEl) {
+      this.topBarEl.hide();
+    }
+  }
+
+  private calculateReadingProgress(): void {
+    if (!this.currentView) return;
+
+    let scrollTop = 0;
+    let scrollHeight = 0;
+    let clientHeight = 0;
+
+    const mode = this.currentView.getMode();
+    if (mode === 'preview') {
+      const container = this.currentView.previewMode?.containerEl;
+      if (container) {
+        scrollTop = container.scrollTop;
+        scrollHeight = container.scrollHeight;
+        clientHeight = container.clientHeight;
+      }
+    } else {
+      // In Live Preview / Source mode, query CodeMirror 6's scroller DOM directly
+      const cm = (this.currentView.editor as any)?.cm;
+      const scroller = cm?.scrollDOM || (this.currentView.contentEl.querySelector('.cm-scroller') as HTMLElement);
+      if (scroller) {
+        scrollTop = scroller.scrollTop;
+        scrollHeight = scroller.scrollHeight;
+        clientHeight = scroller.clientHeight;
+      }
+    }
+
+    const maxScroll = scrollHeight - clientHeight;
+    let percent = 0;
+
+    if (maxScroll > 30) {
+      percent = Math.min(100, Math.max(0, Math.round((scrollTop / maxScroll) * 100)));
+    } else {
+      // Smooth fallback for short documents or initial layout measurement
+      if (this.rawHeadings.length > 1 && this.activeIndex >= 0) {
+        percent = Math.round((this.activeIndex / (this.rawHeadings.length - 1)) * 100);
+      } else {
+        const lineCount = this.currentView.editor.lineCount();
+        const cursorLine = this.currentView.editor.getCursor().line;
+        percent = lineCount > 1 ? Math.round((cursorLine / (lineCount - 1)) * 100) : 0;
+      }
+    }
+
+    percent = Math.min(100, Math.max(0, percent));
+    this.updateProgressBar(percent);
+  }
+
+  private updateProgressBar(percent: number): void {
+    if (!this.progressFillEl || !this.progressTextEl) return;
+    this.progressFillEl.style.width = `${percent}%`;
+    const usePersianDigits = this.settings.uiLanguage === 'fa' && this.settings.persianNumerals;
+    const percentStr = usePersianDigits
+      ? `${toPersianDigits(percent, true)}٪`
+      : `${percent}%`;
+    this.progressTextEl.setText(percentStr);
+  }
+
+  public jumpSection(direction: SectionNavigationDirection): void {
+    if (!this.currentView || this.rawHeadings.length === 0) return;
+
+    const surrounding = getSurroundingHeadings(this.rawHeadings, this.activeHeading);
+    const target = direction === 'prev' ? surrounding.prev : surrounding.next;
+
+    if (target) {
+      scrollToHeading(this.currentView, target, 'smooth');
+    }
+  }
+
+  public clear(): void {
+    this.rawHeadings = [];
+    this.rootNodes = [];
+    this.flatNodes = [];
+    this.activeHeading = null;
+    this.activeIndex = -1;
+    this.detachScrollListener();
+    this.treeContainerEl?.empty();
+    this.emptyStateEl?.show();
+    this.updateHeaderDisplay(null);
+    this.updateProgressBar(0);
+  }
+
+  public onunload(): void {
+    this.detachScrollListener();
+    this.clear();
+  }
+}

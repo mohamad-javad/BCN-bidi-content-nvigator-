@@ -1,0 +1,31 @@
+{
+  "name": "obsidian-bidi-navigator",
+  "version": "1.0.0",
+  "description": "A sleek, bidirectional (Persian/RTL & LTR) document heading navigator with active section scroll-spy, previous/next jump bar, and reading progress.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs dev",
+    "build": "node esbuild.config.mjs"
+  },
+  "keywords": [
+    "obsidian",
+    "obsidian-plugin",
+    "bidi",
+    "rtl",
+    "navigator",
+    "headings",
+    "scroll-spy"
+  ],
+  "author": "Mohammad Javad",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.21.0",
+    "tslib": "^2.6.2",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "obsidian": "latest"
+  }
+}
