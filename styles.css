@@ -437,17 +437,17 @@
   opacity: 0;
   transform: translateY(-8px) scale(0.95);
   pointer-events: none;
-  display: none !important;
+  display: none;
 }
 
 .bidi-floating-navigator.is-mode-mini .bidi-floating-toggle-btn {
-  display: flex !important;
+  display: flex;
 }
 
 /* When in Floating or Full-Height, hide the pill button */
 .bidi-floating-navigator.is-mode-floating .bidi-floating-toggle-btn,
 .bidi-floating-navigator.is-mode-full-height .bidi-floating-toggle-btn {
-  display: none !important;
+  display: none;
 }
 
 /* Mode 2: Floating Card Window */
@@ -473,50 +473,50 @@
 
 /* Mode 3: Full-Height Rail (Spanning entire page height) */
 .bidi-floating-navigator.is-mode-full-height {
-  top: 0 !important;
-  bottom: 0 !important;
-  height: 100% !important;
-  max-height: 100% !important;
+  top: 0;
+  bottom: 0;
+  height: 100%;
+  max-height: 100%;
 }
 
 .bidi-floating-navigator.is-mode-full-height.is-side-right {
-  right: 0 !important;
-  left: auto !important;
+  right: 0;
+  left: auto;
   align-items: stretch;
 }
 
 .bidi-floating-navigator.is-mode-full-height.is-side-left {
-  left: 0 !important;
-  right: auto !important;
+  left: 0;
+  right: auto;
   align-items: stretch;
 }
 
 .bidi-floating-navigator.is-mode-full-height .bidi-floating-card {
   display: flex;
   flex-direction: column;
-  height: 100% !important;
-  max-height: 100% !important;
-  border-radius: 0 !important;
-  border-top: none !important;
-  border-bottom: none !important;
-  border-right: none !important;
-  border-left: 1px solid var(--background-modifier-border) !important;
+  height: 100%;
+  max-height: 100%;
+  border-radius: 0;
+  border-top: none;
+  border-bottom: none;
+  border-right: none;
+  border-left: 1px solid var(--background-modifier-border);
   background-color: var(--background-primary);
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12) !important;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   overflow: hidden;
 }
 
 .bidi-floating-navigator.is-mode-full-height.is-side-left .bidi-floating-card {
-  border-left: none !important;
-  border-right: 1px solid var(--background-modifier-border) !important;
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12) !important;
+  border-left: none;
+  border-right: 1px solid var(--background-modifier-border);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
 }
 
 /* Floating Toggle Button (Compass Pill) */
 .bidi-floating-toggle-btn {
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   width: 32px;
@@ -545,11 +545,11 @@
   opacity: 0;
   transform: translateY(-8px) scale(0.96);
   pointer-events: none;
-  display: none !important;
+  display: none;
 }
 
 .bidi-floating-navigator.is-collapsed .bidi-floating-toggle-btn {
-  display: flex !important;
+  display: flex;
 }
 
 /* ==========================================================================
