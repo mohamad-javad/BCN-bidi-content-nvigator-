@@ -1,5 +1,5 @@
 {
-  "name": "obsidian-bidi-navigator",
+  "name": "bidi-flow-navigator",
   "version": "1.0.0",
   "description": "A sleek, bidirectional (Persian/RTL & LTR) document heading navigator with active section scroll-spy, previous/next jump bar, and reading progress.",
   "main": "main.js",

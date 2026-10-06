@@ -60,9 +60,9 @@
 
 ### Method 2: Manual Installation
 1. Download `main.js`, `manifest.json`, and `styles.css` from the latest [GitHub Release](https://github.com/mohamad-javad/BCN-bidi-content-nvigator-/releases).
-2. Create a folder named `obsidian-bidi-navigator` inside your vault:
+2. Create a folder named `bidi-flow-navigator` inside your vault:
    ```bash
-   <Your-Vault>/.obsidian/plugins/obsidian-bidi-navigator/
+   <Your-Vault>/.obsidian/plugins/bidi-flow-navigator/
    ```
 3. Copy the downloaded files into that folder.
 4. Reload Obsidian (`Ctrl + R`) and enable **BiDi Flow Navigator** under **Settings > Community plugins**.
