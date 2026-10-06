@@ -1,4 +1,4 @@
-import { Plugin, MarkdownView, WorkspaceLeaf } from 'obsidian';
+import { Plugin, MarkdownView, WorkspaceLeaf, setTooltip } from 'obsidian';
 import { BidiFlowSettings, DEFAULT_SETTINGS } from './types';
 import { BidiFlowSidebarView, BIDI_FLOW_VIEW_TYPE } from './BidiFlowSidebarView';
 import { BidiFlowFloatingWidget } from './BidiFlowFloatingWidget';
@@ -8,6 +8,7 @@ import { t } from './i18n';
 export default class BidiFlowNavigatorPlugin extends Plugin {
   public settings: BidiFlowSettings = DEFAULT_SETTINGS;
   private floatingWidgets: Map<MarkdownView, BidiFlowFloatingWidget> = new Map();
+  private ribbonIconEl: HTMLElement | null = null;
 
   async onload() {
     await this.loadSettings();
@@ -20,17 +21,18 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
       (leaf: WorkspaceLeaf) => new BidiFlowSidebarView(leaf, this.settings)
     );
 
-    // 2. Add Ribbon Icon
-    this.addRibbonIcon('compass', tr.viewTitle, () => {
-      void this.activateSidebarView();
+    // 2. Add Ribbon Icon with Toggle behavior
+    this.ribbonIconEl = this.addRibbonIcon('compass', tr.viewTitle, () => {
+      void this.toggleSidebarView();
     });
+    setTooltip(this.ribbonIconEl, tr.viewTitle);
 
     // 3. Register Commands
     this.addCommand({
       id: 'open-bidi-navigator-sidebar',
       name: tr.cmdOpenSidebar,
       callback: () => {
-        void this.activateSidebarView();
+        void this.toggleSidebarView();
       },
     });
 
@@ -184,6 +186,40 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
         leaf.view.updateSettings(this.settings);
       }
     }
+
+    // Update ribbon tooltip & aria-label
+    if (this.ribbonIconEl) {
+      const tr = t(this.settings.uiLanguage);
+      this.ribbonIconEl.setAttribute('aria-label', tr.viewTitle);
+      setTooltip(this.ribbonIconEl, tr.viewTitle);
+    }
+  }
+
+  public async toggleSidebarView(): Promise<void> {
+    const { workspace } = this.app;
+    const leaves = workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
+    const rightSplit = workspace.rightSplit;
+
+    if (leaves.length > 0) {
+      const leaf = leaves[0];
+      const isRightOpen = !rightSplit?.collapsed;
+      const isOurTabVisible = leaf.view.containerEl.isShown();
+
+      if (isRightOpen && isOurTabVisible) {
+        // Toggle closed: collapse right sidebar
+        rightSplit?.collapse();
+        return;
+      }
+
+      // Expand sidebar and reveal our tab
+      if (rightSplit?.collapsed) {
+        rightSplit.expand();
+      }
+      await workspace.revealLeaf(leaf);
+      return;
+    }
+
+    await this.activateSidebarView();
   }
 
   public async activateSidebarView(): Promise<void> {
@@ -197,6 +233,9 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
       }
     }
     if (leaf) {
+      if (workspace.rightSplit?.collapsed) {
+        workspace.rightSplit.expand();
+      }
       await workspace.revealLeaf(leaf);
     }
   }

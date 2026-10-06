@@ -1,6 +1,6 @@
 {
   "name": "bidi-flow-navigator",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A sleek, bidirectional (Persian/RTL & LTR) document heading navigator with active section scroll-spy, previous/next jump bar, and reading progress.",
   "main": "main.js",
   "scripts": {

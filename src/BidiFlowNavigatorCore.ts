@@ -4,7 +4,8 @@ import {
   setIcon,
   setTooltip,
   debounce,
-  HeadingCache
+  HeadingCache,
+  MarkdownSubView
 } from 'obsidian';
 import { BidiHeadingNode, BidiFlowSettings, SectionNavigationDirection, SurroundingHeadings, NavigatorDisplayMode } from './types';
 import { cleanHeadingText, toPersianDigits, isRtlText } from './utils';
@@ -234,6 +235,7 @@ export class BidiFlowNavigatorCore extends Component {
 
   public setView(view: MarkdownView | null): void {
     if (this.currentView === view && view !== null) {
+      this.attachScrollListener();
       this.refreshHeadings();
       return;
     }
@@ -383,7 +385,16 @@ export class BidiFlowNavigatorCore extends Component {
         // Click handler to jump to section
         rowEl.addEventListener('click', () => {
           if (this.currentView) {
+            // Instantly update active heading, UI badge, tree highlight, and progress bar
+            this.activeHeading = node.heading;
+            const surrounding = getSurroundingHeadings(this.rawHeadings, node.heading);
+            this.activeIndex = surrounding.activeIndex;
+            this.updateHeaderDisplay(surrounding);
+            this.highlightActiveInTree();
+            this.calculateReadingProgress();
+
             scrollToHeading(this.currentView, node.heading, 'smooth');
+            this.currentView.editor.focus();
           }
         });
 
@@ -440,17 +451,6 @@ export class BidiFlowNavigatorCore extends Component {
     this.detachScrollListener();
     if (!this.currentView) return;
 
-    let targetEl: HTMLElement | null = null;
-    const mode = this.currentView.getMode();
-
-    if (mode === 'preview') {
-      targetEl = this.currentView.previewMode?.containerEl ?? null;
-    } else {
-      targetEl = this.currentView.contentEl.querySelector('.cm-scroller');
-    }
-
-    if (!targetEl) return;
-
     const onScroll = () => {
       if (this.rafId !== null) return;
       this.rafId = window.requestAnimationFrame(() => {
@@ -459,9 +459,42 @@ export class BidiFlowNavigatorCore extends Component {
       });
     };
 
-    targetEl.addEventListener('scroll', onScroll, { passive: true });
+    const cleanups: (() => void)[] = [];
+
+    // Capture scroll events on containerEl and contentEl
+    // Scroll events don't bubble, but capture phase travels through all ancestors
+    const container = this.currentView.containerEl;
+    if (container) {
+      container.addEventListener('scroll', onScroll, { capture: true, passive: true });
+      container.addEventListener('wheel', onScroll, { passive: true });
+      cleanups.push(() => {
+        container.removeEventListener('scroll', onScroll, { capture: true });
+        container.removeEventListener('wheel', onScroll);
+      });
+    }
+
+    const content = this.currentView.contentEl;
+    if (content && content !== container) {
+      content.addEventListener('scroll', onScroll, { capture: true, passive: true });
+      cleanups.push(() => content.removeEventListener('scroll', onScroll, { capture: true }));
+    }
+
+    const cmScroller = content?.querySelector<HTMLElement>('.cm-scroller');
+    if (cmScroller) {
+      cmScroller.addEventListener('scroll', onScroll, { passive: true });
+      cleanups.push(() => cmScroller.removeEventListener('scroll', onScroll));
+    }
+
+    const previewContainer = this.currentView.previewMode?.containerEl;
+    if (previewContainer) {
+      previewContainer.addEventListener('scroll', onScroll, { passive: true });
+      cleanups.push(() => previewContainer.removeEventListener('scroll', onScroll));
+    }
+
     this.scrollCleanup = () => {
-      targetEl?.removeEventListener('scroll', onScroll);
+      for (const fn of cleanups) {
+        fn();
+      }
     };
 
     // Initial sync
@@ -505,6 +538,8 @@ export class BidiFlowNavigatorCore extends Component {
       this.nextBtnEl.disabled = true;
       this.prevBtnEl.addClass('is-disabled');
       this.nextBtnEl.addClass('is-disabled');
+      this.prevBtnEl.setAttribute('aria-label', tr.docStart);
+      this.nextBtnEl.setAttribute('aria-label', tr.docEnd);
       setTooltip(this.prevBtnEl, tr.docStart);
       setTooltip(this.nextBtnEl, tr.docEnd);
       return;
@@ -521,7 +556,9 @@ export class BidiFlowNavigatorCore extends Component {
     // Title
     const cleanedTitle = cleanHeadingText(active.heading) || tr.untitled;
     this.currentTitleEl.setText(cleanedTitle);
-    setTooltip(this.currentBadgeEl, `[H${active.level}] ${cleanedTitle}`);
+    const badgeLabel = `[H${active.level}] ${cleanedTitle}`;
+    this.currentBadgeEl.setAttribute('aria-label', badgeLabel);
+    setTooltip(this.currentBadgeEl, badgeLabel);
 
     // Section counter
     const idxNum = activeIndex + 1;
@@ -535,10 +572,13 @@ export class BidiFlowNavigatorCore extends Component {
       this.prevBtnEl.disabled = false;
       this.prevBtnEl.removeClass('is-disabled');
       const prevTitle = cleanHeadingText(prev.heading) || tr.untitled;
-      setTooltip(this.prevBtnEl, tr.prevTooltip(prevTitle, prev.level));
+      const prevTip = tr.prevTooltip(prevTitle, prev.level);
+      this.prevBtnEl.setAttribute('aria-label', prevTip);
+      setTooltip(this.prevBtnEl, prevTip);
     } else {
       this.prevBtnEl.disabled = true;
       this.prevBtnEl.addClass('is-disabled');
+      this.prevBtnEl.setAttribute('aria-label', tr.docStart);
       setTooltip(this.prevBtnEl, tr.docStart);
     }
 
@@ -546,10 +586,13 @@ export class BidiFlowNavigatorCore extends Component {
       this.nextBtnEl.disabled = false;
       this.nextBtnEl.removeClass('is-disabled');
       const nextTitle = cleanHeadingText(next.heading) || tr.untitled;
-      setTooltip(this.nextBtnEl, tr.nextTooltip(nextTitle, next.level));
+      const nextTip = tr.nextTooltip(nextTitle, next.level);
+      this.nextBtnEl.setAttribute('aria-label', nextTip);
+      setTooltip(this.nextBtnEl, nextTip);
     } else {
       this.nextBtnEl.disabled = true;
       this.nextBtnEl.addClass('is-disabled');
+      this.nextBtnEl.setAttribute('aria-label', tr.docEnd);
       setTooltip(this.nextBtnEl, tr.docEnd);
     }
   }
@@ -570,7 +613,14 @@ export class BidiFlowNavigatorCore extends Component {
     const el = this.headingElementMap.get(node.id);
     if (el) {
       el.addClass('is-active');
-      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (this.treeContainerEl) {
+        const containerRect = this.treeContainerEl.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        const isOutOfView = elRect.top < containerRect.top || elRect.bottom > containerRect.bottom;
+        if (isOutOfView) {
+          el.scrollIntoView({ block: 'nearest' });
+        }
+      }
     }
   }
 
@@ -617,42 +667,53 @@ export class BidiFlowNavigatorCore extends Component {
   private calculateReadingProgress(): void {
     if (!this.currentView) return;
 
-    let scrollTop = 0;
-    let scrollHeight = 0;
-    let clientHeight = 0;
-
+    let percent = 0;
     const mode = this.currentView.getMode();
+
     if (mode === 'preview') {
       const container = this.currentView.previewMode?.containerEl;
       if (container) {
-        scrollTop = container.scrollTop;
-        scrollHeight = container.scrollHeight;
-        clientHeight = container.clientHeight;
+        const maxScroll = container.scrollHeight - container.clientHeight;
+        if (maxScroll > 10) {
+          if (container.scrollTop <= 5) {
+            percent = 0;
+          } else if (container.scrollTop + container.clientHeight >= container.scrollHeight - 10) {
+            percent = 100;
+          } else {
+            percent = Math.round((container.scrollTop / maxScroll) * 100);
+          }
+        }
       }
     } else {
-      // In Live Preview / Source mode, query CodeMirror 6's scroller DOM directly
-      const cm = getCodeMirrorView(this.currentView.editor);
-      const scroller = cm?.scrollDOM ?? this.currentView.contentEl.querySelector<HTMLElement>('.cm-scroller');
+      const scroller = this.currentView.contentEl.querySelector<HTMLElement>('.cm-scroller');
       if (scroller) {
-        scrollTop = scroller.scrollTop;
-        scrollHeight = scroller.scrollHeight;
-        clientHeight = scroller.clientHeight;
+        const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+        if (maxScroll > 10) {
+          if (scroller.scrollTop <= 5) {
+            percent = 0;
+          } else if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 15) {
+            percent = 100;
+          } else {
+            percent = Math.round((scroller.scrollTop / maxScroll) * 100);
+          }
+        }
       }
     }
 
-    const maxScroll = scrollHeight - clientHeight;
-    let percent = 0;
-
-    if (maxScroll > 30) {
-      percent = Math.min(100, Math.max(0, Math.round((scrollTop / maxScroll) * 100)));
-    } else {
-      // Smooth fallback for short documents or initial layout measurement
-      if (this.rawHeadings.length > 1 && this.activeIndex >= 0) {
-        percent = Math.round((this.activeIndex / (this.rawHeadings.length - 1)) * 100);
-      } else {
+    // Line-based fallback
+    if (percent === 0 && this.currentView.editor) {
+      try {
         const lineCount = this.currentView.editor.lineCount();
-        const cursorLine = this.currentView.editor.getCursor().line;
-        percent = lineCount > 1 ? Math.round((cursorLine / (lineCount - 1)) * 100) : 0;
+        const subView = (this.currentView as unknown as { currentMode?: MarkdownSubView }).currentMode;
+        const currentLine = typeof subView?.getScroll === 'function'
+          ? subView.getScroll()
+          : (this.activeHeading ? this.activeHeading.position.start.line : 0);
+
+        if (lineCount > 1 && currentLine > 0) {
+          percent = Math.round((currentLine / (lineCount - 1)) * 100);
+        }
+      } catch {
+        // Ignore
       }
     }
 
@@ -677,7 +738,16 @@ export class BidiFlowNavigatorCore extends Component {
     const target = direction === 'prev' ? surrounding.prev : surrounding.next;
 
     if (target) {
+      // Instantly update active heading, UI badge, tree highlight, and progress bar
+      this.activeHeading = target;
+      const targetSurrounding = getSurroundingHeadings(this.rawHeadings, target);
+      this.activeIndex = targetSurrounding.activeIndex;
+      this.updateHeaderDisplay(targetSurrounding);
+      this.highlightActiveInTree();
+      this.calculateReadingProgress();
+
       scrollToHeading(this.currentView, target, 'smooth');
+      this.currentView.editor.focus();
     }
   }
 

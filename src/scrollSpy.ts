@@ -1,4 +1,4 @@
-import { MarkdownView, HeadingCache, Editor } from 'obsidian';
+import { MarkdownView, HeadingCache, Editor, MarkdownSubView } from 'obsidian';
 import { SurroundingHeadings } from './types';
 import { cleanHeadingText } from './utils';
 
@@ -42,7 +42,7 @@ export interface CmEditorInstance {
 
 export interface CodeMirrorEditorView {
   cm?: CmEditorInstance;
-  getScrollInfo?: () => { top: number; left: number; width: number; height: number };
+  getScrollInfo?: () => { top: number; left: number };
 }
 
 export interface MarkdownPreviewViewWithScroll {
@@ -94,37 +94,69 @@ export function getActiveHeadingInSourceMode(
 ): HeadingCache | null {
   if (!headings || headings.length === 0) return null;
 
-  const cm = getCodeMirrorView(view.editor);
-  let currentLine0: number;
+  // 1. Primary: check visible heading DOM elements in Live Preview viewport
+  const scroller = view.contentEl.querySelector<HTMLElement>('.cm-scroller');
+  if (scroller) {
+    const scrollerRect = scroller.getBoundingClientRect();
+    const threshold = scrollerRect.top + bufferPx;
 
-  if (cm && cm.scrollDOM && cm.lineBlockAtHeight && cm.state?.doc) {
-    try {
-      const scrollTop = cm.scrollDOM.scrollTop;
-      const targetHeight = Math.max(0, scrollTop + bufferPx);
-      const block = cm.lineBlockAtHeight(targetHeight);
-      const lineInfo = cm.state.doc.lineAt(block.from);
-      currentLine0 = lineInfo.number - 1;
-    } catch {
-      currentLine0 = view.editor.getCursor().line;
-    }
-  } else {
-    // Fallback using Editor scroll info or cursor
-    try {
-      const editorView = view.editor as unknown as CodeMirrorEditorView;
-      const scrollInfo = editorView.getScrollInfo ? editorView.getScrollInfo() : null;
-      if (scrollInfo && scrollInfo.height > 0) {
-        const lineCount = view.editor.lineCount();
-        const ratio = (scrollInfo.top + bufferPx) / scrollInfo.height;
-        currentLine0 = Math.min(lineCount - 1, Math.max(0, Math.floor(ratio * lineCount)));
+    const headingEls = Array.from(
+      view.contentEl.querySelectorAll<HTMLElement>('.HyperMD-header, [class*="HyperMD-header"]')
+    );
+
+    let activeEl: HTMLElement | null = null;
+    for (const el of headingEls) {
+      const rect = el.getBoundingClientRect();
+      if (rect.top <= threshold) {
+        activeEl = el;
       } else {
-        currentLine0 = view.editor.getCursor().line;
+        break;
       }
-    } catch {
-      currentLine0 = view.editor.getCursor().line;
+    }
+
+    if (activeEl) {
+      const headingText = activeEl.textContent?.trim() ?? '';
+      if (headingText) {
+        const cleanTarget = cleanHeadingText(headingText);
+        const matched = headings.find(h => {
+          const hClean = cleanHeadingText(h.heading);
+          return (
+            h.heading.trim() === headingText ||
+            hClean === cleanTarget ||
+            headingText.includes(h.heading.trim()) ||
+            h.heading.trim().includes(headingText)
+          );
+        });
+        if (matched) return matched;
+      }
     }
   }
 
-  return findLatestHeadingBeforeLine(headings, currentLine0);
+  // 2. Secondary: Obsidian SubView scroll line
+  const subView = (view as unknown as { currentMode?: MarkdownSubView; editMode?: MarkdownSubView }).currentMode ??
+                  (view as unknown as { editMode?: MarkdownSubView }).editMode;
+  if (typeof subView?.getScroll === 'function') {
+    const scrollLine = subView.getScroll();
+    if (typeof scrollLine === 'number' && !isNaN(scrollLine)) {
+      return findLatestHeadingBeforeLine(headings, Math.floor(scrollLine + 2));
+    }
+  }
+
+  // 3. Fallback: CodeMirror scrollDOM ratio
+  const cm = getCodeMirrorView(view.editor);
+  if (cm?.scrollDOM && cm.state?.doc) {
+    try {
+      const scrollerEl = cm.scrollDOM;
+      const ratio = scrollerEl.scrollHeight > 0 ? (scrollerEl.scrollTop + bufferPx) / scrollerEl.scrollHeight : 0;
+      const totalLines = cm.state.doc.lines;
+      const estimatedLine = Math.min(totalLines - 1, Math.max(0, Math.floor(ratio * totalLines)));
+      return findLatestHeadingBeforeLine(headings, estimatedLine);
+    } catch {
+      // Ignore
+    }
+  }
+
+  return headings[0] ?? null;
 }
 
 /**
@@ -175,8 +207,8 @@ export function getActiveHeadingInReadingView(
     ? previewScroll.getScroll()
     : null;
 
-  if (typeof currentScrollLine === 'number') {
-    return findLatestHeadingBeforeLine(headings, Math.floor(currentScrollLine));
+  if (typeof currentScrollLine === 'number' && !isNaN(currentScrollLine)) {
+    return findLatestHeadingBeforeLine(headings, Math.floor(currentScrollLine + 2));
   }
 
   return headings[0] ?? null;
