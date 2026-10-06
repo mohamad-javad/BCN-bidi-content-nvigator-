@@ -3,3 +3,4 @@ node_modules/
 *.hot-update.js
 .DS_Store
 *.log
+push_to_github.sh

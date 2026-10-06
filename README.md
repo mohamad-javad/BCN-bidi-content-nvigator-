@@ -9,28 +9,6 @@
 
 ---
 
-## 📸 Screenshots & Showcase
-
-<p align="center">
-  <img src="assets/floating-window.png" alt="BiDi Flow Navigator Floating Window" width="300" />
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="assets/tooltip-preview.png" alt="BiDi Flow Tooltip Preview" width="300" />
-</p>
-<p align="center">
-  <em>Left: Floating Card mode with heading tree, reading progress bar & search. Right: Native tooltip preview on long heading hover.</em>
-</p>
-
-<p align="center">
-  <img src="assets/mini-pill-mode.png" alt="BiDi Flow Mini Pill Mode" width="220" />
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="assets/settings-view.png" alt="BiDi Flow Settings Tab" width="480" />
-</p>
-<p align="center">
-  <em>Left: Compact Mini Pill mode floating seamlessly in note corner. Right: Clean settings panel with instant language switcher.</em>
-</p>
-
----
-
 ## ✨ Key Features
 
 - **🌐 First-Class BiDi & RTL Typography:**
@@ -120,6 +98,28 @@ In Obsidian **Settings > BiDi Flow Navigator**:
 - **Heading Level Badges:** Display colored tags for `H1`–`H6`.
 - **Indentation Step:** Adjust indentation distance for nested sub-headings (in pixels).
 - **Max Heading Level:** Filter headings deeper than specified level (up to H6).
+
+---
+
+## 📸 Screenshots & Showcase
+
+<p align="center">
+  <img src="assets/floating-window.png" alt="BiDi Flow Navigator Floating Window" width="300" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="assets/tooltip-preview.png" alt="BiDi Flow Tooltip Preview" width="300" />
+</p>
+<p align="center">
+  <em>Left: Floating Card mode with heading tree, reading progress bar & search. Right: Native tooltip preview on long heading hover.</em>
+</p>
+
+<p align="center">
+  <img src="assets/mini-pill-mode.png" alt="BiDi Flow Mini Pill Mode" width="220" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="assets/settings-view.png" alt="BiDi Flow Settings Tab" width="480" />
+</p>
+<p align="center">
+  <em>Left: Compact Mini Pill mode floating seamlessly in note corner. Right: Clean settings panel with instant language switcher.</em>
+</p>
 
 ---
 
