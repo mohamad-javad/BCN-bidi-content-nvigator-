@@ -2,7 +2,7 @@
 
 [![Obsidian Plugin](https://img.shields.io/badge/Obsidian-Plugin-7C3AED?logo=obsidian&logoColor=white)](https://obsidian.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Latest Release](https://img.shields.io/badge/release-v1.0.0-emerald.svg)](https://github.com)
+[![Latest Release](https://img.shields.io/badge/release-v1.0.0-emerald.svg)](https://github.com/mohamad-javad/BCN-bidi-content-nvigator-/releases)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
 **BiDi Flow Navigator** is a modern, high-performance document heading outline and navigator plugin for [Obsidian](https://obsidian.md). Engineered with first-class support for **Bidirectional (BiDi) typography (Persian, Arabic, and mixed RTL/LTR)**, it provides smooth section-by-section navigation, real-time scroll-spy, a 3-mode flexible window system, reading progress calculation, and instant search.
@@ -76,12 +76,12 @@
 2. In BRAT settings, click **Add Beta plugin**.
 3. Enter this repository URL:
    ```text
-   https://github.com/<your-username>/obsidian-bidi-navigator
+   https://github.com/mohamad-javad/BCN-bidi-content-nvigator-
    ```
 4. Click **Add Plugin** and enable **BiDi Flow Navigator** in Obsidian's Community Plugins list.
 
 ### Method 2: Manual Installation
-1. Download `main.js`, `manifest.json`, and `styles.css` from the latest [GitHub Release](../../releases).
+1. Download `main.js`, `manifest.json`, and `styles.css` from the latest [GitHub Release](https://github.com/mohamad-javad/BCN-bidi-content-nvigator-/releases).
 2. Create a folder named `obsidian-bidi-navigator` inside your vault:
    ```bash
    <Your-Vault>/.obsidian/plugins/obsidian-bidi-navigator/
@@ -152,8 +152,8 @@ To build the plugin from source:
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/obsidian-bidi-navigator.git
-cd obsidian-bidi-navigator
+git clone https://github.com/mohamad-javad/BCN-bidi-content-nvigator-.git
+cd BCN-bidi-content-nvigator-
 
 # Install dependencies
 npm install
@@ -177,4 +177,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## 🤝 Contributing
 
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com).
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/mohamad-javad/BCN-bidi-content-nvigator-/issues).

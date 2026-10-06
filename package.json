@@ -18,6 +18,10 @@
   ],
   "author": "Mohammad Javad",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mohamad-javad/BCN-bidi-content-nvigator-.git"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "builtin-modules": "^3.3.0",
