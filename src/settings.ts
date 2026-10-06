@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import type BidiFlowNavigatorPlugin from './main';
 import { t } from './i18n';
+import { NavigatorDisplayMode } from './types';
 
 export class BidiFlowSettingTab extends PluginSettingTab {
   private plugin: BidiFlowNavigatorPlugin;
@@ -16,7 +17,7 @@ export class BidiFlowSettingTab extends PluginSettingTab {
 
     const tr = t(this.plugin.settings.uiLanguage);
 
-    containerEl.createEl('h2', { text: tr.settingsTitle });
+    new Setting(containerEl).setName(tr.settingsTitle).setHeading();
 
     // Language Selection
     new Setting(containerEl)
@@ -76,7 +77,7 @@ export class BidiFlowSettingTab extends PluginSettingTab {
           .addOption('full-height', tr.modeFullHeight)
           .setValue(this.plugin.settings.defaultMode)
           .onChange(async (val: string) => {
-            this.plugin.settings.defaultMode = val as any;
+            this.plugin.settings.defaultMode = val as NavigatorDisplayMode;
             await this.plugin.saveSettings();
             this.plugin.refreshAllWidgets();
           })
@@ -90,7 +91,6 @@ export class BidiFlowSettingTab extends PluginSettingTab {
         slider
           .setLimits(200, 420, 10)
           .setValue(this.plugin.settings.widgetWidth)
-          .setDynamicTooltip()
           .onChange(async (val) => {
             this.plugin.settings.widgetWidth = val;
             await this.plugin.saveSettings();
@@ -162,7 +162,6 @@ export class BidiFlowSettingTab extends PluginSettingTab {
         slider
           .setLimits(6, 24, 2)
           .setValue(this.plugin.settings.indentStepPx)
-          .setDynamicTooltip()
           .onChange(async (val) => {
             this.plugin.settings.indentStepPx = val;
             await this.plugin.saveSettings();

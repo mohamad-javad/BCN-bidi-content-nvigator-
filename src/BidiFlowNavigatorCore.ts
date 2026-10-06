@@ -8,7 +8,7 @@ import {
 } from 'obsidian';
 import { BidiHeadingNode, BidiFlowSettings, SectionNavigationDirection, SurroundingHeadings, NavigatorDisplayMode } from './types';
 import { cleanHeadingText, toPersianDigits, isRtlText } from './utils';
-import { getActiveHeading, getSurroundingHeadings, scrollToHeading } from './scrollSpy';
+import { getActiveHeading, getSurroundingHeadings, scrollToHeading, getCodeMirrorView } from './scrollSpy';
 import { t } from './i18n';
 
 export class BidiFlowNavigatorCore extends Component {
@@ -173,7 +173,7 @@ export class BidiFlowNavigatorCore extends Component {
     }
     const track = this.progressBarEl.createDiv({ cls: 'bidi-flow-progress-track' });
     this.progressFillEl = track.createDiv({ cls: 'bidi-flow-progress-fill' });
-    this.progressFillEl.style.width = '0%';
+    this.progressFillEl.setCssStyles({ width: '0%' });
     this.progressTextEl = this.progressBarEl.createSpan({
       cls: 'bidi-flow-progress-text',
       text: (this.settings.uiLanguage === 'fa' && this.settings.persianNumerals) ? '۰٪' : '0%'
@@ -226,7 +226,9 @@ export class BidiFlowNavigatorCore extends Component {
     }, 100, true);
 
     this.searchInputEl.addEventListener('input', (e) => {
-      debouncedFilter((e.target as HTMLInputElement).value);
+      if (e.target instanceof HTMLInputElement) {
+        debouncedFilter(e.target.value);
+      }
     });
   }
 
@@ -339,7 +341,7 @@ export class BidiFlowNavigatorCore extends Component {
 
         // Set logical indentation CSS variable
         const indentPx = (node.level - 1) * this.settings.indentStepPx;
-        rowEl.style.setProperty('--bidi-indent', `${indentPx}px`);
+        rowEl.setCssProps({ '--bidi-indent': `${indentPx}px` });
 
         // Collapse / Expand toggle button
         const toggleEl = rowEl.createSpan({ cls: 'bidi-flow-toggle-icon' });
@@ -367,7 +369,7 @@ export class BidiFlowNavigatorCore extends Component {
 
         // Heading Title with dir="auto"
         const isRtl = isRtlText(node.text);
-        const titleSpan = rowEl.createSpan({
+        rowEl.createSpan({
           cls: `bidi-flow-node-title ${isRtl ? 'is-rtl' : 'is-ltr'}`,
           text: node.text,
           attr: { dir: 'auto' }
@@ -444,7 +446,7 @@ export class BidiFlowNavigatorCore extends Component {
     if (mode === 'preview') {
       targetEl = this.currentView.previewMode?.containerEl ?? null;
     } else {
-      targetEl = this.currentView.contentEl.querySelector('.cm-scroller') as HTMLElement;
+      targetEl = this.currentView.contentEl.querySelector('.cm-scroller');
     }
 
     if (!targetEl) return;
@@ -629,8 +631,8 @@ export class BidiFlowNavigatorCore extends Component {
       }
     } else {
       // In Live Preview / Source mode, query CodeMirror 6's scroller DOM directly
-      const cm = (this.currentView.editor as any)?.cm;
-      const scroller = cm?.scrollDOM || (this.currentView.contentEl.querySelector('.cm-scroller') as HTMLElement);
+      const cm = getCodeMirrorView(this.currentView.editor);
+      const scroller = cm?.scrollDOM ?? this.currentView.contentEl.querySelector<HTMLElement>('.cm-scroller');
       if (scroller) {
         scrollTop = scroller.scrollTop;
         scrollHeight = scroller.scrollHeight;
@@ -660,7 +662,7 @@ export class BidiFlowNavigatorCore extends Component {
 
   private updateProgressBar(percent: number): void {
     if (!this.progressFillEl || !this.progressTextEl) return;
-    this.progressFillEl.style.width = `${percent}%`;
+    this.progressFillEl.setCssStyles({ width: `${percent}%` });
     const usePersianDigits = this.settings.uiLanguage === 'fa' && this.settings.persianNumerals;
     const percentStr = usePersianDigits
       ? `${toPersianDigits(percent, true)}٪`

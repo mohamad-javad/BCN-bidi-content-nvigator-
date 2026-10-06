@@ -57,7 +57,7 @@ export class BidiFlowFloatingWidget extends Component {
 
     // Navigator card container
     this.cardEl = this.hostContainerEl.createDiv({ cls: 'bidi-floating-card' });
-    this.cardEl.style.width = `${this.settings.widgetWidth}px`;
+    this.cardEl.setCssStyles({ width: `${this.settings.widgetWidth}px` });
 
     // Instantiate core component
     this.core = this.addChild(new BidiFlowNavigatorCore(this.cardEl, this.settings));
@@ -139,7 +139,7 @@ export class BidiFlowFloatingWidget extends Component {
       this.hostContainerEl.addClass(`is-side-${settings.floatingPosition}`);
     }
     if (this.cardEl) {
-      this.cardEl.style.width = `${settings.widgetWidth}px`;
+      this.cardEl.setCssStyles({ width: `${settings.widgetWidth}px` });
     }
     if (this.toggleBtnEl) {
       const tr = t(settings.uiLanguage);

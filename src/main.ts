@@ -3,7 +3,6 @@ import { BidiFlowSettings, DEFAULT_SETTINGS } from './types';
 import { BidiFlowSidebarView, BIDI_FLOW_VIEW_TYPE } from './BidiFlowSidebarView';
 import { BidiFlowFloatingWidget } from './BidiFlowFloatingWidget';
 import { BidiFlowSettingTab } from './settings';
-import { scrollToHeading } from './scrollSpy';
 import { t } from './i18n';
 
 export default class BidiFlowNavigatorPlugin extends Plugin {
@@ -23,14 +22,16 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
 
     // 2. Add Ribbon Icon
     this.addRibbonIcon('compass', tr.viewTitle, () => {
-      this.activateSidebarView();
+      void this.activateSidebarView();
     });
 
     // 3. Register Commands
     this.addCommand({
       id: 'open-bidi-navigator-sidebar',
       name: tr.cmdOpenSidebar,
-      callback: () => this.activateSidebarView(),
+      callback: () => {
+        void this.activateSidebarView();
+      },
     });
 
     this.addCommand({
@@ -196,12 +197,12 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
       }
     }
     if (leaf) {
-      workspace.revealLeaf(leaf);
+      await workspace.revealLeaf(leaf);
     }
   }
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, (await this.loadData()) as Partial<BidiFlowSettings>);
   }
 
   async saveSettings() {

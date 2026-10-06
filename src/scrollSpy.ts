@@ -2,11 +2,59 @@ import { MarkdownView, HeadingCache, Editor } from 'obsidian';
 import { SurroundingHeadings } from './types';
 import { cleanHeadingText } from './utils';
 
+export interface CmScrollDOM {
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+}
+
+export interface CmLineBlock {
+  top: number;
+  bottom: number;
+  from: number;
+  to: number;
+}
+
+export interface CmDocLine {
+  from: number;
+  to: number;
+  number: number;
+  text?: string;
+}
+
+export interface CmDoc {
+  lines: number;
+  line(n: number): CmDocLine;
+  lineAt(pos: number): CmDocLine;
+}
+
+export interface CmState {
+  doc: CmDoc;
+}
+
+export interface CmEditorInstance {
+  scrollDOM?: HTMLElement & CmScrollDOM;
+  state?: CmState;
+  coordsAtPos?: (pos: number) => { top: number; bottom: number } | null;
+  lineBlockAt?: (pos: number) => CmLineBlock;
+  lineBlockAtHeight?: (height: number) => CmLineBlock;
+}
+
+export interface CodeMirrorEditorView {
+  cm?: CmEditorInstance;
+  getScrollInfo?: () => { top: number; left: number; width: number; height: number };
+}
+
+export interface MarkdownPreviewViewWithScroll {
+  getScroll?: () => number;
+  applyScroll?: (scroll: number) => void;
+}
+
 /**
  * Retrieves the CodeMirror 6 EditorView instance from Obsidian Editor
  */
-export function getCodeMirrorView(editor: Editor): any {
-  return (editor as any)?.cm ?? null;
+export function getCodeMirrorView(editor: Editor): CmEditorInstance | null {
+  return (editor as unknown as CodeMirrorEditorView)?.cm ?? null;
 }
 
 /**
@@ -62,7 +110,8 @@ export function getActiveHeadingInSourceMode(
   } else {
     // Fallback using Editor scroll info or cursor
     try {
-      const scrollInfo = (view.editor as any).getScrollInfo ? (view.editor as any).getScrollInfo() : null;
+      const editorView = view.editor as unknown as CodeMirrorEditorView;
+      const scrollInfo = editorView.getScrollInfo ? editorView.getScrollInfo() : null;
       if (scrollInfo && scrollInfo.height > 0) {
         const lineCount = view.editor.lineCount();
         const ratio = (scrollInfo.top + bufferPx) / scrollInfo.height;
@@ -121,8 +170,9 @@ export function getActiveHeadingInReadingView(
     }
   }
 
-  const currentScrollLine = typeof (preview as any).getScroll === 'function'
-    ? (preview as any).getScroll()
+  const previewScroll = preview as unknown as MarkdownPreviewViewWithScroll;
+  const currentScrollLine = typeof previewScroll.getScroll === 'function'
+    ? previewScroll.getScroll()
     : null;
 
   if (typeof currentScrollLine === 'number') {
@@ -268,8 +318,9 @@ export function scrollToHeadingInReadingView(
   }
 
   view.setEphemeralState({ line: heading.position.start.line });
-  if (typeof (preview as any).applyScroll === 'function') {
-    (preview as any).applyScroll(heading.position.start.line);
+  const previewScroll = preview as unknown as MarkdownPreviewViewWithScroll;
+  if (typeof previewScroll.applyScroll === 'function') {
+    previewScroll.applyScroll(heading.position.start.line);
   }
 }
 
