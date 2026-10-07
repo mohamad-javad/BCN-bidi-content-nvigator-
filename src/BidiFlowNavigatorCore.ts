@@ -8,7 +8,7 @@ import {
   MarkdownSubView
 } from 'obsidian';
 import { BidiHeadingNode, BidiFlowSettings, SectionNavigationDirection, SurroundingHeadings, NavigatorDisplayMode } from './types';
-import { cleanHeadingText, toPersianDigits, isRtlText } from './utils';
+import { cleanHeadingText, toPersianDigits, isRtlText, detectDocumentDirection } from './utils';
 import { getActiveHeading, getSurroundingHeadings, scrollToHeading } from './scrollSpy';
 import { t } from './i18n';
 
@@ -329,36 +329,54 @@ export class BidiFlowNavigatorCore extends Component {
     this.treeContainerEl.empty();
     this.headingElementMap.clear();
 
+    const docDir = detectDocumentDirection(this.rawHeadings, this.currentView?.file?.basename);
+    this.treeContainerEl.setAttribute('dir', docDir);
+    this.treeContainerEl.classList.toggle('is-doc-rtl', docDir === 'rtl');
+    this.treeContainerEl.classList.toggle('is-doc-ltr', docDir === 'ltr');
+    this.treeContainerEl.setCssProps({
+      '--bidi-indent-guide-offset': `${this.settings.indentStepPx}px`
+    });
+    this.containerEl.setAttribute('data-doc-dir', docDir);
+
     const renderBranch = (nodes: BidiHeadingNode[], parentEl: HTMLElement) => {
       for (const node of nodes) {
         if (!node.isVisible) continue;
 
-        const rowEl = parentEl.createDiv({
-          cls: `bidi-flow-tree-node bidi-level-${node.level}`,
+        // Tree Item container (hierarchical element)
+        const itemEl = parentEl.createDiv({
+          cls: `tree-item bidi-flow-tree-item bidi-level-${node.level}`,
+          attr: {
+            'data-heading-id': node.id,
+            'data-level': node.level.toString()
+          }
+        });
+
+        // Clickable self row matching Obsidian's native tree-item-self
+        const rowEl = itemEl.createDiv({
+          cls: `tree-item-self is-clickable bidi-flow-tree-row bidi-flow-tree-node`,
           attr: {
             'data-heading-id': node.id,
             'data-line': node.line.toString()
           }
         });
 
-        // Set logical indentation CSS variable
-        const indentPx = (node.level - 1) * this.settings.indentStepPx;
-        rowEl.setCssProps({ '--bidi-indent': `${indentPx}px` });
-
-        // Collapse / Expand toggle button
-        const toggleEl = rowEl.createSpan({ cls: 'bidi-flow-toggle-icon' });
+        // Collapse / Expand toggle button (chevron icon)
         if (node.children.length > 0) {
-          setIcon(toggleEl, node.isCollapsed ? 'chevron-right' : 'chevron-down');
+          const toggleEl = rowEl.createDiv({
+            cls: `tree-item-icon collapse-icon bidi-flow-toggle-icon ${node.isCollapsed ? 'is-collapsed' : ''}`
+          });
+          const collapseIconName = node.isCollapsed
+            ? (docDir === 'rtl' ? 'chevron-left' : 'chevron-right')
+            : 'chevron-down';
+          setIcon(toggleEl, collapseIconName);
           toggleEl.addEventListener('click', (e) => {
             e.stopPropagation();
             node.isCollapsed = !node.isCollapsed;
             this.renderTree();
           });
-        } else {
-          toggleEl.addClass('is-leaf');
         }
 
-        // Level Badge (H1, H2 or ۱, ۲)
+        // Level Badge (H1, H2 or ۱, ۲) if enabled
         if (this.settings.showLevelBadge) {
           const badgeText = this.settings.persianNumerals
             ? `H${toPersianDigits(node.level, true)}`
@@ -371,8 +389,8 @@ export class BidiFlowNavigatorCore extends Component {
 
         // Heading Title with dir="auto"
         const isRtl = isRtlText(node.text);
-        rowEl.createSpan({
-          cls: `bidi-flow-node-title ${isRtl ? 'is-rtl' : 'is-ltr'}`,
+        rowEl.createDiv({
+          cls: `tree-item-inner bidi-flow-node-title ${isRtl ? 'is-rtl' : 'is-ltr'}`,
           text: node.text,
           attr: { dir: 'auto' }
         });
@@ -398,9 +416,11 @@ export class BidiFlowNavigatorCore extends Component {
           }
         });
 
-        // Render children if expanded
+        // Render nested children if expanded
         if (node.children.length > 0 && !node.isCollapsed) {
-          const childContainer = parentEl.createDiv({ cls: 'bidi-flow-children-container' });
+          const childContainer = itemEl.createDiv({
+            cls: 'tree-item-children bidi-flow-children-container bidi-flow-tree-children'
+          });
           renderBranch(node.children, childContainer);
         }
       }
@@ -605,6 +625,19 @@ export class BidiFlowNavigatorCore extends Component {
 
     if (this.activeIndex >= 0 && this.flatNodes[this.activeIndex]) {
       const activeNode = this.flatNodes[this.activeIndex];
+      let p = activeNode.parent;
+      let neededReRender = false;
+      while (p) {
+        if (p.isCollapsed) {
+          p.isCollapsed = false;
+          neededReRender = true;
+        }
+        p = p.parent;
+      }
+      if (neededReRender) {
+        this.renderTree();
+        return;
+      }
       this.highlightNode(activeNode);
     }
   }

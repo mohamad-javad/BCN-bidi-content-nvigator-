@@ -258,84 +258,132 @@
   background-color: var(--background-modifier-hover);
 }
 
+.bidi-flow-navigator[data-doc-dir="rtl"] .bidi-flow-search-box {
+  flex-direction: row-reverse;
+}
+
+.bidi-flow-navigator[data-doc-dir="rtl"] .bidi-flow-search-input {
+  text-align: right;
+  direction: rtl;
+}
+
+.bidi-flow-navigator[data-doc-dir="ltr"] .bidi-flow-search-input {
+  text-align: left;
+  direction: ltr;
+}
+
 /* ==========================================================================
-   Heading Tree Container & Nodes
+   Heading Tree Container & Nodes (Native Obsidian Tree Architecture)
    ========================================================================== */
 
 .bidi-flow-tree-container {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 6px 4px 12px;
+  padding: 6px 8px 16px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-.bidi-flow-children-container {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-/* Tree Node Item */
-.bidi-flow-tree-node {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
-  margin-inline-start: var(--bidi-indent, 0px);
-  border-radius: var(--radius-s);
-  border-inline-start: 3px solid transparent;
-  cursor: pointer;
-  transition: all 0.14s ease-out;
-  min-height: 26px;
+  gap: 1px;
   box-sizing: border-box;
 }
 
+/* Tree Item - Hierarchical Node */
+.bidi-flow-tree-item.tree-item {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+}
+
+/* Tree Item Self - Clickable Row */
+.bidi-flow-tree-row.tree-item-self,
+.bidi-flow-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+  min-height: 26px;
+  box-sizing: border-box;
+  color: var(--nav-item-color, var(--text-muted));
+  user-select: none;
+  width: 100%;
+}
+
+.bidi-flow-tree-row.tree-item-self:hover,
 .bidi-flow-tree-node:hover {
-  background-color: var(--background-modifier-hover);
+  background-color: var(--nav-item-background-hover, var(--background-modifier-hover));
+  color: var(--nav-item-color-hover, var(--text-normal));
 }
 
-/* Active Heading Highlight & Accent Glow */
+/* Active Heading Highlight (Matches Native Obsidian outline active pill) */
+.bidi-flow-tree-row.tree-item-self.is-active,
 .bidi-flow-tree-node.is-active {
-  background-color: var(--background-modifier-active-hover);
-  border-inline-start-color: var(--interactive-accent);
-  box-shadow: inset 1px 0 6px rgba(var(--interactive-accent-rgb), 0.12);
+  background-color: var(--nav-item-background-active, var(--background-modifier-active-hover));
+  color: var(--nav-item-color-active, var(--text-normal));
+  font-weight: var(--nav-item-weight-active, 600);
 }
 
+.bidi-flow-tree-row.tree-item-self.is-active .bidi-flow-node-title,
 .bidi-flow-tree-node.is-active .bidi-flow-node-title {
-  color: var(--interactive-accent);
+  color: var(--nav-item-color-active, var(--text-normal));
   font-weight: 600;
 }
 
+.bidi-flow-tree-row.tree-item-self.is-active .bidi-flow-level-pill,
 .bidi-flow-tree-node.is-active .bidi-flow-level-pill {
   background-color: var(--interactive-accent);
   color: var(--text-on-accent);
 }
 
-/* Toggle Fold Icon */
-.bidi-flow-toggle-icon {
+/* Indentation Guidelines for Children (Nested Tree Structure) */
+.bidi-flow-tree-children.tree-item-children,
+.bidi-flow-children-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-inline-start: var(--bidi-indent-guide-offset, 12px);
+  padding-inline-start: 4px;
+  border-inline-start: 1px solid var(--nav-indentation-guide-color, var(--background-modifier-border));
+  position: relative;
+}
+
+.bidi-flow-tree-children.tree-item-children:hover,
+.bidi-flow-children-container:hover {
+  border-inline-start-color: var(--nav-indentation-guide-color-hover, var(--background-modifier-border-hover, var(--text-faint)));
+}
+
+/* Toggle Fold Icon (Chevron Icon) */
+.bidi-flow-toggle-icon.collapse-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 16px;
   height: 16px;
   min-width: 16px;
-  color: var(--text-faint);
+  color: var(--nav-collapse-icon-color, var(--text-faint));
   border-radius: var(--radius-s);
   cursor: pointer;
   transition: transform 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+  margin-inline-end: 2px;
 }
 
-.bidi-flow-toggle-icon:hover {
-  color: var(--text-normal);
+.bidi-flow-toggle-icon.collapse-icon:hover {
+  color: var(--nav-collapse-icon-color-collapsed, var(--text-normal));
   background-color: var(--background-modifier-hover);
 }
 
+.bidi-flow-toggle-icon.collapse-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
+}
+
 .bidi-flow-toggle-icon.is-leaf {
-  visibility: hidden;
-  pointer-events: none;
+  display: none;
 }
 
 /* Level Badges */
@@ -345,18 +393,21 @@
   padding: 1px 4px;
   border-radius: var(--radius-s);
   background-color: var(--background-modifier-border);
-  color: var(--text-muted);
+  color: var(--text-faint);
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  flex-shrink: 0;
+  margin-inline-end: 2px;
 }
 
 .bidi-flow-level-pill.level-1 {
-  background-color: rgba(var(--interactive-accent-rgb), 0.18);
+  background-color: rgba(var(--interactive-accent-rgb), 0.15);
   color: var(--interactive-accent);
 }
 
 /* Heading Text & Bidirectional Handling */
+.bidi-flow-node-title.tree-item-inner,
 .bidi-flow-node-title {
   flex: 1;
   min-width: 0;
@@ -364,9 +415,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: start;
-  line-height: 1.35;
-  font-size: 12px;
-  color: var(--text-normal);
+  line-height: var(--line-height-tight, 1.4);
+  font-size: var(--nav-item-size, 13px);
+  color: inherit;
   unicode-bidi: plaintext;
   overflow-wrap: anywhere;
 }

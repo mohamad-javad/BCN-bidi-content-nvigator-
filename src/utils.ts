@@ -10,12 +10,54 @@ export function toPersianDigits(n: number | string, enabled = true): string {
 
 /**
  * Checks if a string contains predominantly RTL / Persian / Arabic characters.
+ * Prioritizes alphabet letters over digits so English text with Persian digits
+ * remains properly classified as LTR.
  */
 export function isRtlText(text: string): boolean {
   if (!text) return false;
-  // Persian / Arabic / Hebrew unicode ranges
-  const rtlRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\u0590-\u05FF]/;
-  return rtlRegex.test(text);
+  const rtlLetters = text.match(/[\u0621-\u064A\u0671-\u06D3\u06FB-\u06FC\u067E\u0686\u0698\u06AF\uFB50-\uFDFF\uFE70-\uFEFC\u0590-\u05FF]/g);
+  const ltrLetters = text.match(/[a-zA-Z]/g);
+  if (!rtlLetters && !ltrLetters) {
+    const rtlRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\u0590-\u05FF]/;
+    return rtlRegex.test(text);
+  }
+  return (rtlLetters?.length || 0) >= (ltrLetters?.length || 0);
+}
+
+/**
+ * Detects whether a document / set of headings is predominantly RTL (Persian/Arabic) or LTR (English).
+ */
+export function detectDocumentDirection(
+  headings: { heading: string }[],
+  fallbackTitle?: string
+): 'rtl' | 'ltr' {
+  let rtlCount = 0;
+  let ltrCount = 0;
+
+  const rtlLetterRegex = /[\u0621-\u064A\u0671-\u06D3\u06FB-\u06FC\u067E\u0686\u0698\u06AF\uFB50-\uFDFF\uFE70-\uFEFC\u0590-\u05FF]/g;
+  const ltrLetterRegex = /[a-zA-Z]/g;
+
+  for (const h of headings) {
+    const text = h.heading || '';
+    const rtlMatches = text.match(rtlLetterRegex);
+    const ltrMatches = text.match(ltrLetterRegex);
+    if (rtlMatches) rtlCount += rtlMatches.length;
+    if (ltrMatches) ltrCount += ltrMatches.length;
+  }
+
+  if (rtlCount > 0 || ltrCount > 0) {
+    return rtlCount >= ltrCount ? 'rtl' : 'ltr';
+  }
+
+  if (fallbackTitle) {
+    const rtlMatches = fallbackTitle.match(rtlLetterRegex);
+    const ltrMatches = fallbackTitle.match(ltrLetterRegex);
+    if (rtlMatches || ltrMatches) {
+      return (rtlMatches?.length || 0) >= (ltrMatches?.length || 0) ? 'rtl' : 'ltr';
+    }
+  }
+
+  return 'ltr';
 }
 
 /**
