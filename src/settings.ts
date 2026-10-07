@@ -138,12 +138,12 @@ export class BidiFlowSettingTab extends PluginSettingTab {
           key: 'colorTheme',
           options: {
             default: tr.themeDefault,
-            nord: 'Nord (نورد)',
-            dracula: 'Dracula (دراکولا)',
-            catppuccin: 'Catppuccin Mocha (کپوچین)',
-            gruvbox: 'Gruvbox (گرووباکس)',
-            'tokyo-night': 'Tokyo Night (توکیو نایت)',
-            solarized: 'Solarized (سولارایزد)',
+            nord: tr.themeNord,
+            dracula: tr.themeDracula,
+            catppuccin: tr.themeCatppuccin,
+            gruvbox: tr.themeGruvbox,
+            'tokyo-night': tr.themeTokyoNight,
+            solarized: tr.themeSolarized,
           },
         },
       },
@@ -379,12 +379,12 @@ export class BidiFlowSettingTab extends PluginSettingTab {
       .addDropdown((dropdown) =>
         dropdown
           .addOption('default', tr.themeDefault)
-          .addOption('nord', 'Nord (نورد)')
-          .addOption('dracula', 'Dracula (دراکولا)')
-          .addOption('catppuccin', 'Catppuccin Mocha (کپوچین)')
-          .addOption('gruvbox', 'Gruvbox (گرووباکس)')
-          .addOption('tokyo-night', 'Tokyo Night (توکیو نایت)')
-          .addOption('solarized', 'Solarized (سولارایزد)')
+          .addOption('nord', tr.themeNord)
+          .addOption('dracula', tr.themeDracula)
+          .addOption('catppuccin', tr.themeCatppuccin)
+          .addOption('gruvbox', tr.themeGruvbox)
+          .addOption('tokyo-night', tr.themeTokyoNight)
+          .addOption('solarized', tr.themeSolarized)
           .setValue(this.plugin.settings.colorTheme || 'default')
           .onChange(async (val) => {
             this.plugin.settings.colorTheme = val as BidiColorTheme;
