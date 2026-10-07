@@ -52,6 +52,8 @@ export class BidiFlowNavigatorCore extends Component {
   private headingElementMap: Map<string, HTMLElement> = new Map();
   private scrollCleanup: (() => void) | null = null;
   private rafId: number | null = null;
+  private isUserInteractingWithTree = false;
+  private userScrollTimeout: number | null = null;
 
   constructor(containerEl: HTMLElement, settings: BidiFlowSettings) {
     super();
@@ -231,6 +233,36 @@ export class BidiFlowNavigatorCore extends Component {
         debouncedFilter(e.target.value);
       }
     });
+
+    // Handle user interaction and scrolling on the tree container
+    this.treeContainerEl.addEventListener('mouseenter', () => {
+      this.isUserInteractingWithTree = true;
+    });
+    this.treeContainerEl.addEventListener('mouseleave', () => {
+      this.isUserInteractingWithTree = false;
+    });
+    this.treeContainerEl.addEventListener('wheel', (e) => {
+      e.stopPropagation();
+      this.isUserInteractingWithTree = true;
+      if (this.userScrollTimeout !== null) {
+        window.clearTimeout(this.userScrollTimeout);
+      }
+      this.userScrollTimeout = window.setTimeout(() => {
+        this.isUserInteractingWithTree = false;
+        this.userScrollTimeout = null;
+      }, 1000);
+    }, { passive: true });
+    this.treeContainerEl.addEventListener('scroll', (e) => {
+      e.stopPropagation();
+      this.isUserInteractingWithTree = true;
+      if (this.userScrollTimeout !== null) {
+        window.clearTimeout(this.userScrollTimeout);
+      }
+      this.userScrollTimeout = window.setTimeout(() => {
+        this.isUserInteractingWithTree = false;
+        this.userScrollTimeout = null;
+      }, 1000);
+    }, { passive: true });
   }
 
   public setView(view: MarkdownView | null): void {
@@ -403,6 +435,7 @@ export class BidiFlowNavigatorCore extends Component {
         // Click handler to jump to section
         rowEl.addEventListener('click', () => {
           if (this.currentView) {
+            this.isUserInteractingWithTree = false;
             // Instantly update active heading, UI badge, tree highlight, and progress bar
             this.activeHeading = node.heading;
             const surrounding = getSurroundingHeadings(this.rawHeadings, node.heading);
@@ -471,7 +504,11 @@ export class BidiFlowNavigatorCore extends Component {
     this.detachScrollListener();
     if (!this.currentView) return;
 
-    const onScroll = () => {
+    const onScroll = (e?: Event) => {
+      // If the scroll/wheel event came from inside the navigator itself, ignore it!
+      if (e?.target && this.containerEl && this.containerEl.contains(e.target as Node)) {
+        return;
+      }
       if (this.rafId !== null) return;
       this.rafId = window.requestAnimationFrame(() => {
         this.rafId = null;
@@ -525,6 +562,10 @@ export class BidiFlowNavigatorCore extends Component {
     if (this.rafId !== null) {
       window.cancelAnimationFrame(this.rafId);
       this.rafId = null;
+    }
+    if (this.userScrollTimeout !== null) {
+      window.clearTimeout(this.userScrollTimeout);
+      this.userScrollTimeout = null;
     }
     if (this.scrollCleanup) {
       this.scrollCleanup();
@@ -642,18 +683,26 @@ export class BidiFlowNavigatorCore extends Component {
     }
   }
 
-  private highlightNode(node: BidiHeadingNode): void {
+  private highlightNode(node: BidiHeadingNode, shouldScrollIntoView = true): void {
     const el = this.headingElementMap.get(node.id);
-    if (el) {
-      el.addClass('is-active');
-      if (this.treeContainerEl) {
-        const containerRect = this.treeContainerEl.getBoundingClientRect();
-        const elRect = el.getBoundingClientRect();
-        const isOutOfView = elRect.top < containerRect.top || elRect.bottom > containerRect.bottom;
-        if (isOutOfView) {
-          el.scrollIntoView({ block: 'nearest' });
-        }
-      }
+    if (!el) return;
+
+    el.addClass('is-active');
+
+    // If user is actively hovering or scrolling the tree, do not force-scroll the tree
+    if (!shouldScrollIntoView || this.isUserInteractingWithTree || !this.treeContainerEl) {
+      return;
+    }
+
+    // Scroll ONLY this.treeContainerEl without affecting any ancestor elements
+    const container = this.treeContainerEl;
+    const containerRect = container.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+
+    if (elRect.top < containerRect.top) {
+      container.scrollTop -= (containerRect.top - elRect.top + 8);
+    } else if (elRect.bottom > containerRect.bottom) {
+      container.scrollTop += (elRect.bottom - containerRect.bottom + 8);
     }
   }
 
@@ -771,6 +820,7 @@ export class BidiFlowNavigatorCore extends Component {
     const target = direction === 'prev' ? surrounding.prev : surrounding.next;
 
     if (target) {
+      this.isUserInteractingWithTree = false;
       // Instantly update active heading, UI badge, tree highlight, and progress bar
       this.activeHeading = target;
       const targetSurrounding = getSurroundingHeadings(this.rawHeadings, target);

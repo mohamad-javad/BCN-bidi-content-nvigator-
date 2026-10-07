@@ -59,6 +59,11 @@ export class BidiFlowFloatingWidget extends Component {
     this.cardEl = this.hostContainerEl.createDiv({ cls: 'bidi-floating-card' });
     this.cardEl.setCssStyles({ width: `${this.settings.widgetWidth}px` });
 
+    // Isolate wheel events within floating card from bubbling to editor
+    this.cardEl.addEventListener('wheel', (e) => {
+      e.stopPropagation();
+    }, { passive: true });
+
     // Instantiate core component
     this.core = this.addChild(new BidiFlowNavigatorCore(this.cardEl, this.settings));
 

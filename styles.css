@@ -285,6 +285,7 @@
   flex-direction: column;
   gap: 1px;
   box-sizing: border-box;
+  overscroll-behavior: contain;
 }
 
 /* Tree Item - Hierarchical Node */
