@@ -35,6 +35,7 @@ export class BidiFlowNavigatorCore extends Component {
 
   // Search Elements
   private searchContainerEl!: HTMLElement;
+  private collapseAllBtn?: HTMLElement;
   private searchInputEl!: HTMLInputElement;
 
   // Tree Elements
@@ -75,6 +76,7 @@ export class BidiFlowNavigatorCore extends Component {
   public updateSettings(newSettings: BidiFlowSettings): void {
     const langChanged = this.settings.uiLanguage !== newSettings.uiLanguage;
     this.settings = newSettings;
+    this.applyTheme();
     if (langChanged) {
       this.buildSkeleton();
       this.registerDomEvents();
@@ -89,10 +91,18 @@ export class BidiFlowNavigatorCore extends Component {
     this.refreshHeadings();
   }
 
+  public applyTheme(): void {
+    const theme = this.settings.colorTheme || 'default';
+    const style = this.settings.themeStyle || 'solid';
+    this.containerEl.setAttribute('data-color-theme', theme);
+    this.containerEl.setAttribute('data-theme-style', style);
+  }
+
   private buildSkeleton(): void {
     const tr = t(this.settings.uiLanguage);
     this.containerEl.empty();
     this.containerEl.addClass('bidi-flow-navigator');
+    this.applyTheme();
 
     // 1. Header Bar
     this.headerEl = this.containerEl.createDiv({ cls: 'bidi-flow-header' });
@@ -187,6 +197,18 @@ export class BidiFlowNavigatorCore extends Component {
     if (!this.settings.showSearch) {
       this.searchContainerEl.hide();
     }
+
+    // Collapse All / Expand All toggle button (like native Obsidian outline)
+    this.collapseAllBtn = this.searchContainerEl.createSpan({
+      cls: 'clickable-icon bidi-flow-collapse-all-btn',
+      attr: { 'aria-label': tr.collapseAll }
+    });
+    setIcon(this.collapseAllBtn, 'chevrons-up-down');
+    setTooltip(this.collapseAllBtn, tr.collapseAll);
+    this.collapseAllBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggleCollapseAll();
+    });
 
     const searchIcon = this.searchContainerEl.createSpan({ cls: 'bidi-flow-search-icon' });
     setIcon(searchIcon, 'search');
@@ -465,6 +487,43 @@ export class BidiFlowNavigatorCore extends Component {
     if (this.activeIndex >= 0 && this.flatNodes[this.activeIndex]) {
       this.highlightNode(this.flatNodes[this.activeIndex]);
     }
+
+    this.updateCollapseAllIcon();
+  }
+
+  public toggleCollapseAll(): void {
+    const anyExpanded = this.flatNodes.some(n => n.children.length > 0 && !n.isCollapsed);
+    const shouldCollapse = anyExpanded;
+
+    const setCollapseRecursive = (nodes: BidiHeadingNode[]) => {
+      for (const node of nodes) {
+        if (node.children.length > 0) {
+          node.isCollapsed = shouldCollapse;
+          setCollapseRecursive(node.children);
+        }
+      }
+    };
+
+    setCollapseRecursive(this.rootNodes);
+    this.updateCollapseAllIcon();
+    this.renderTree();
+  }
+
+  private updateCollapseAllIcon(): void {
+    if (!this.collapseAllBtn) return;
+    const hasBranches = this.flatNodes.some(n => n.children.length > 0);
+    if (!hasBranches) {
+      this.collapseAllBtn.addClass('is-disabled');
+      return;
+    }
+    this.collapseAllBtn.removeClass('is-disabled');
+    const anyExpanded = this.flatNodes.some(n => n.children.length > 0 && !n.isCollapsed);
+    const tr = t(this.settings.uiLanguage);
+    const tooltip = anyExpanded ? tr.collapseAll : tr.expandAll;
+    const iconName = anyExpanded ? 'chevrons-up-down' : 'chevrons-down-up';
+    setIcon(this.collapseAllBtn, iconName);
+    this.collapseAllBtn.setAttribute('aria-label', tooltip);
+    setTooltip(this.collapseAllBtn, tooltip);
   }
 
   private onSearchChanged(query: string): void {

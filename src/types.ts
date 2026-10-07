@@ -2,6 +2,8 @@ import { HeadingCache } from 'obsidian';
 import { UILanguage } from './i18n';
 
 export type NavigatorDisplayMode = 'mini' | 'floating' | 'full-height';
+export type BidiColorTheme = 'default' | 'nord' | 'dracula' | 'catppuccin' | 'gruvbox' | 'tokyo-night' | 'solarized';
+export type BidiThemeStyle = 'solid' | 'transparent';
 
 export interface BidiFlowSettings {
   uiLanguage: UILanguage;
@@ -16,6 +18,8 @@ export interface BidiFlowSettings {
   persianNumerals: boolean;
   maxHeadingLevel: number;
   widgetWidth: number;
+  colorTheme: BidiColorTheme;
+  themeStyle: BidiThemeStyle;
 }
 
 export const DEFAULT_SETTINGS: BidiFlowSettings = {
@@ -31,6 +35,8 @@ export const DEFAULT_SETTINGS: BidiFlowSettings = {
   persianNumerals: true,
   maxHeadingLevel: 6,
   widgetWidth: 260,
+  colorTheme: 'default',
+  themeStyle: 'solid',
 };
 
 export interface BidiHeadingNode {

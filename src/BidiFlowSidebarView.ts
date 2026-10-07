@@ -37,6 +37,8 @@ export class BidiFlowSidebarView extends ItemView {
     const container = this.contentEl;
     container.empty();
     container.addClass('bidi-sidebar-container');
+    container.setAttribute('data-color-theme', this.settings.colorTheme || 'default');
+    container.setAttribute('data-theme-style', this.settings.themeStyle || 'solid');
 
     this.core = this.addChild(new BidiFlowNavigatorCore(container, this.settings));
     this.core.hideWindowControls();
@@ -123,6 +125,8 @@ export class BidiFlowSidebarView extends ItemView {
     this.settings = settings;
     const tr = t(settings.uiLanguage);
     this.updateTabHeader(tr.viewTitle);
+    this.contentEl.setAttribute('data-color-theme', settings.colorTheme || 'default');
+    this.contentEl.setAttribute('data-theme-style', settings.themeStyle || 'solid');
     this.core?.updateSettings(settings);
   }
 

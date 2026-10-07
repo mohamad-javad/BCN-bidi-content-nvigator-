@@ -215,46 +215,89 @@
   align-items: center;
   gap: 6px;
   padding: 5px 8px;
-  background-color: var(--background-secondary-alt);
-  border-bottom: 1px solid var(--background-modifier-border);
+  background-color: var(--bidi-bg-alt, var(--background-secondary-alt));
+  border-bottom: 1px solid var(--bidi-border, var(--background-modifier-border));
+}
+
+.bidi-flow-collapse-all-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  color: var(--bidi-text-muted, var(--text-faint));
+  cursor: pointer;
+  border-radius: var(--radius-s);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.bidi-flow-collapse-all-btn:hover:not(.is-disabled) {
+  color: var(--bidi-text, var(--text-normal));
+  background-color: var(--background-modifier-hover);
+}
+
+.bidi-flow-collapse-all-btn.is-disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+.bidi-flow-collapse-all-btn svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2;
 }
 
 .bidi-flow-search-icon {
   display: inline-flex;
   align-items: center;
-  color: var(--text-faint);
+  justify-content: center;
+  color: var(--bidi-text-muted, var(--text-faint));
   font-size: 12px;
+  flex-shrink: 0;
+}
+
+.bidi-flow-search-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
 .bidi-flow-search-input {
   flex: 1;
-  border: none;
-  background: transparent;
-  padding: 2px 4px;
+  border: 1px solid var(--bidi-border, var(--background-modifier-border));
+  border-radius: var(--radius-s);
+  background: var(--bidi-bg, var(--background-primary));
+  padding: 3px 6px;
   font-size: 11.5px;
-  color: var(--text-normal);
+  color: var(--bidi-text, var(--text-normal));
   font-family: inherit;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .bidi-flow-search-input:focus {
   outline: none;
+  border-color: var(--bidi-accent, var(--interactive-accent));
 }
 
 .bidi-flow-search-input::placeholder {
-  color: var(--text-faint);
+  color: var(--bidi-text-muted, var(--text-faint));
 }
 
 .bidi-flow-search-clear {
-  color: var(--text-faint);
+  color: var(--bidi-text-muted, var(--text-faint));
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding: 2px;
   border-radius: var(--radius-s);
+  flex-shrink: 0;
 }
 
 .bidi-flow-search-clear:hover {
-  color: var(--text-normal);
+  color: var(--bidi-text, var(--text-normal));
   background-color: var(--background-modifier-hover);
 }
 
@@ -629,3 +672,255 @@
 .bidi-flow-tree-container::-webkit-scrollbar-thumb:hover {
   background-color: var(--text-faint);
 }
+
+/* ==========================================================================
+   Themes & Translucent Glass Architecture
+   ========================================================================== */
+
+/* Base & Default Theme (Obsidian Native Variables) */
+:root,
+[data-color-theme="default"],
+.bidi-flow-navigator {
+  --bidi-accent: var(--interactive-accent);
+  --bidi-accent-hover: var(--text-accent-hover, var(--interactive-accent-hover));
+  --bidi-bg: var(--background-primary);
+  --bidi-bg-alt: var(--background-secondary-alt);
+  --bidi-text: var(--text-normal);
+  --bidi-text-muted: var(--text-muted);
+  --bidi-border: var(--background-modifier-border);
+  --bidi-active-bg: var(--nav-item-background-active, var(--background-modifier-active-hover));
+  --bidi-card-bg-rgb: 30, 32, 40;
+  --bidi-border-rgb: 120, 120, 120;
+}
+
+.theme-light [data-color-theme="default"] {
+  --bidi-card-bg-rgb: 255, 255, 255;
+  --bidi-border-rgb: 210, 210, 210;
+}
+
+/* 1. Nord Theme */
+.theme-dark [data-color-theme="nord"],
+[data-color-theme="nord"] {
+  --bidi-accent: #88c0d0;
+  --bidi-accent-hover: #81a1c1;
+  --bidi-bg: #2e3440;
+  --bidi-bg-alt: #3b4252;
+  --bidi-text: #eceff4;
+  --bidi-text-muted: #d8dee9;
+  --bidi-border: #434c5e;
+  --bidi-active-bg: rgba(136, 192, 208, 0.22);
+  --bidi-card-bg-rgb: 46, 52, 64;
+  --bidi-border-rgb: 67, 76, 94;
+}
+
+.theme-light [data-color-theme="nord"] {
+  --bidi-accent: #5e81ac;
+  --bidi-accent-hover: #81a1c1;
+  --bidi-bg: #eceff4;
+  --bidi-bg-alt: #e5e9f0;
+  --bidi-text: #2e3440;
+  --bidi-text-muted: #4c566a;
+  --bidi-border: #d8dee9;
+  --bidi-active-bg: rgba(94, 129, 172, 0.18);
+  --bidi-card-bg-rgb: 236, 239, 244;
+  --bidi-border-rgb: 216, 222, 233;
+}
+
+/* 2. Dracula Theme */
+.theme-dark [data-color-theme="dracula"],
+[data-color-theme="dracula"] {
+  --bidi-accent: #bd93f9;
+  --bidi-accent-hover: #ff79c6;
+  --bidi-bg: #282a36;
+  --bidi-bg-alt: #343746;
+  --bidi-text: #f8f8f2;
+  --bidi-text-muted: #6272a4;
+  --bidi-border: #44475a;
+  --bidi-active-bg: rgba(189, 147, 249, 0.22);
+  --bidi-card-bg-rgb: 40, 42, 54;
+  --bidi-border-rgb: 68, 71, 90;
+}
+
+.theme-light [data-color-theme="dracula"] {
+  --bidi-accent: #7b42bc;
+  --bidi-accent-hover: #d63384;
+  --bidi-bg: #f8f8f2;
+  --bidi-bg-alt: #f1f2f6;
+  --bidi-text: #282a36;
+  --bidi-text-muted: #6272a4;
+  --bidi-border: #dcdde1;
+  --bidi-active-bg: rgba(123, 66, 188, 0.16);
+  --bidi-card-bg-rgb: 248, 248, 242;
+  --bidi-border-rgb: 220, 221, 225;
+}
+
+/* 3. Catppuccin Mocha */
+.theme-dark [data-color-theme="catppuccin"],
+[data-color-theme="catppuccin"] {
+  --bidi-accent: #cba6f7;
+  --bidi-accent-hover: #f5c2e7;
+  --bidi-bg: #1e1e2e;
+  --bidi-bg-alt: #181825;
+  --bidi-text: #cdd6f4;
+  --bidi-text-muted: #a6adc8;
+  --bidi-border: #313244;
+  --bidi-active-bg: rgba(203, 166, 247, 0.2);
+  --bidi-card-bg-rgb: 30, 30, 46;
+  --bidi-border-rgb: 49, 50, 68;
+}
+
+.theme-light [data-color-theme="catppuccin"] {
+  --bidi-accent: #8839ef;
+  --bidi-accent-hover: #ea76cb;
+  --bidi-bg: #eff1f5;
+  --bidi-bg-alt: #e6e9ef;
+  --bidi-text: #4c4f69;
+  --bidi-text-muted: #6c6f85;
+  --bidi-border: #ccd0da;
+  --bidi-active-bg: rgba(136, 57, 239, 0.16);
+  --bidi-card-bg-rgb: 239, 241, 245;
+  --bidi-border-rgb: 204, 208, 218;
+}
+
+/* 4. Gruvbox */
+.theme-dark [data-color-theme="gruvbox"],
+[data-color-theme="gruvbox"] {
+  --bidi-accent: #fabd2f;
+  --bidi-accent-hover: #fe8019;
+  --bidi-bg: #282828;
+  --bidi-bg-alt: #32302f;
+  --bidi-text: #ebdbb2;
+  --bidi-text-muted: #a89984;
+  --bidi-border: #504945;
+  --bidi-active-bg: rgba(250, 189, 47, 0.2);
+  --bidi-card-bg-rgb: 40, 40, 40;
+  --bidi-border-rgb: 80, 73, 69;
+}
+
+.theme-light [data-color-theme="gruvbox"] {
+  --bidi-accent: #d79921;
+  --bidi-accent-hover: #af3a03;
+  --bidi-bg: #fbf1c7;
+  --bidi-bg-alt: #f2e5bc;
+  --bidi-text: #3c3836;
+  --bidi-text-muted: #7c6f64;
+  --bidi-border: #d5c4a1;
+  --bidi-active-bg: rgba(215, 153, 33, 0.18);
+  --bidi-card-bg-rgb: 251, 241, 199;
+  --bidi-border-rgb: 213, 196, 161;
+}
+
+/* 5. Tokyo Night */
+.theme-dark [data-color-theme="tokyo-night"],
+[data-color-theme="tokyo-night"] {
+  --bidi-accent: #7aa2f7;
+  --bidi-accent-hover: #bb9af7;
+  --bidi-bg: #1a1b26;
+  --bidi-bg-alt: #24283b;
+  --bidi-text: #c0caf5;
+  --bidi-text-muted: #9aa5ce;
+  --bidi-border: #414868;
+  --bidi-active-bg: rgba(122, 162, 247, 0.22);
+  --bidi-card-bg-rgb: 26, 27, 38;
+  --bidi-border-rgb: 65, 72, 104;
+}
+
+.theme-light [data-color-theme="tokyo-night"] {
+  --bidi-accent: #2e7de9;
+  --bidi-accent-hover: #7b42bc;
+  --bidi-bg: #e1e2e7;
+  --bidi-bg-alt: #d5d6db;
+  --bidi-text: #3760bf;
+  --bidi-text-muted: #6172b0;
+  --bidi-border: #b4b5b9;
+  --bidi-active-bg: rgba(46, 125, 233, 0.16);
+  --bidi-card-bg-rgb: 225, 226, 231;
+  --bidi-border-rgb: 180, 181, 185;
+}
+
+/* 6. Solarized */
+.theme-dark [data-color-theme="solarized"],
+[data-color-theme="solarized"] {
+  --bidi-accent: #268bd2;
+  --bidi-accent-hover: #2aa198;
+  --bidi-bg: #002b36;
+  --bidi-bg-alt: #073642;
+  --bidi-text: #93a1a1;
+  --bidi-text-muted: #586e75;
+  --bidi-border: #073642;
+  --bidi-active-bg: rgba(38, 139, 210, 0.22);
+  --bidi-card-bg-rgb: 0, 43, 54;
+  --bidi-border-rgb: 7, 54, 66;
+}
+
+.theme-light [data-color-theme="solarized"] {
+  --bidi-accent: #268bd2;
+  --bidi-accent-hover: #2aa198;
+  --bidi-bg: #fdf6e3;
+  --bidi-bg-alt: #eee8d5;
+  --bidi-text: #657b83;
+  --bidi-text-muted: #93a1a1;
+  --bidi-border: #eee8d5;
+  --bidi-active-bg: rgba(38, 139, 210, 0.18);
+  --bidi-card-bg-rgb: 253, 246, 227;
+  --bidi-border-rgb: 238, 232, 213;
+}
+
+/* ==========================================================================
+   Theme Style: Solid vs Transparent (Frosted Glassmorphism)
+   ========================================================================== */
+
+/* Solid Style */
+[data-theme-style="solid"] .bidi-floating-card,
+[data-theme-style="solid"].bidi-floating-card,
+[data-theme-style="solid"] .bidi-flow-navigator,
+[data-theme-style="solid"].bidi-sidebar-container {
+  background-color: var(--bidi-bg);
+  color: var(--bidi-text);
+  border-color: var(--bidi-border);
+}
+
+/* Transparent Style (Frosted Glass: 50%-70% transparency, 40%-60% blur) */
+[data-theme-style="transparent"] .bidi-floating-card,
+[data-theme-style="transparent"].bidi-floating-card {
+  background-color: rgba(var(--bidi-card-bg-rgb), 0.42) !important;
+  backdrop-filter: blur(18px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+  border: 1px solid rgba(var(--bidi-border-rgb), 0.35) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+  color: var(--bidi-text);
+}
+
+[data-theme-style="transparent"].bidi-sidebar-container,
+[data-theme-style="transparent"] .bidi-flow-navigator,
+.bidi-sidebar-container[data-theme-style="transparent"] {
+  background-color: rgba(var(--bidi-card-bg-rgb), 0.42) !important;
+  backdrop-filter: blur(18px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+  color: var(--bidi-text);
+}
+
+[data-theme-style="transparent"] .bidi-flow-header,
+[data-theme-style="transparent"] .bidi-flow-search-box {
+  background-color: rgba(var(--bidi-card-bg-rgb), 0.28) !important;
+  border-color: rgba(var(--bidi-border-rgb), 0.22) !important;
+}
+
+[data-theme-style="transparent"] .bidi-flow-search-input {
+  background-color: rgba(var(--bidi-card-bg-rgb), 0.35) !important;
+  border-color: rgba(var(--bidi-border-rgb), 0.3) !important;
+  color: var(--bidi-text);
+}
+
+[data-theme-style="transparent"] .bidi-flow-current-badge {
+  background-color: rgba(var(--bidi-card-bg-rgb), 0.38) !important;
+  border-color: rgba(var(--bidi-border-rgb), 0.25) !important;
+}
+
+[data-theme-style="transparent"] .bidi-floating-toggle-btn {
+  background-color: rgba(var(--bidi-card-bg-rgb), 0.5) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border: 1px solid rgba(var(--bidi-border-rgb), 0.35) !important;
+}
+

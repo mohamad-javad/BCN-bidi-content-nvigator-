@@ -55,9 +55,14 @@ export class BidiFlowFloatingWidget extends Component {
       this.setMode(this.previousExpandedMode);
     });
 
+    this.hostContainerEl.setAttribute('data-color-theme', this.settings.colorTheme || 'default');
+    this.hostContainerEl.setAttribute('data-theme-style', this.settings.themeStyle || 'solid');
+
     // Navigator card container
     this.cardEl = this.hostContainerEl.createDiv({ cls: 'bidi-floating-card' });
     this.cardEl.setCssStyles({ width: `${this.settings.widgetWidth}px` });
+    this.cardEl.setAttribute('data-color-theme', this.settings.colorTheme || 'default');
+    this.cardEl.setAttribute('data-theme-style', this.settings.themeStyle || 'solid');
 
     // Isolate wheel events within floating card from bubbling to editor
     this.cardEl.addEventListener('wheel', (e) => {
@@ -142,9 +147,13 @@ export class BidiFlowFloatingWidget extends Component {
     if (this.hostContainerEl) {
       this.hostContainerEl.removeClass('is-side-left', 'is-side-right');
       this.hostContainerEl.addClass(`is-side-${settings.floatingPosition}`);
+      this.hostContainerEl.setAttribute('data-color-theme', settings.colorTheme || 'default');
+      this.hostContainerEl.setAttribute('data-theme-style', settings.themeStyle || 'solid');
     }
     if (this.cardEl) {
       this.cardEl.setCssStyles({ width: `${settings.widgetWidth}px` });
+      this.cardEl.setAttribute('data-color-theme', settings.colorTheme || 'default');
+      this.cardEl.setAttribute('data-theme-style', settings.themeStyle || 'solid');
     }
     if (this.toggleBtnEl) {
       const tr = t(settings.uiLanguage);

@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, SettingDefinitionItem } from 'obsidian';
 import type BidiFlowNavigatorPlugin from './main';
 import { t } from './i18n';
-import { NavigatorDisplayMode } from './types';
+import { NavigatorDisplayMode, BidiColorTheme, BidiThemeStyle } from './types';
 
 export class BidiFlowSettingTab extends PluginSettingTab {
   private plugin: BidiFlowNavigatorPlugin;
@@ -127,6 +127,35 @@ export class BidiFlowSettingTab extends PluginSettingTab {
             '4': tr.upToLevel(4),
             '5': tr.upToLevel(5),
             '6': tr.allLevels,
+          },
+        },
+      },
+      {
+        name: tr.colorThemeName,
+        desc: tr.colorThemeDesc,
+        control: {
+          type: 'dropdown',
+          key: 'colorTheme',
+          options: {
+            default: tr.themeDefault,
+            nord: 'Nord (نورد)',
+            dracula: 'Dracula (دراکولا)',
+            catppuccin: 'Catppuccin Mocha (کپوچین)',
+            gruvbox: 'Gruvbox (گرووباکس)',
+            'tokyo-night': 'Tokyo Night (توکیو نایت)',
+            solarized: 'Solarized (سولارایزد)',
+          },
+        },
+      },
+      {
+        name: tr.themeStyleName,
+        desc: tr.themeStyleDesc,
+        control: {
+          type: 'dropdown',
+          key: 'themeStyle',
+          options: {
+            solid: tr.themeStyleSolid,
+            transparent: tr.themeStyleTransparent,
           },
         },
       },
@@ -330,6 +359,43 @@ export class BidiFlowSettingTab extends PluginSettingTab {
           .setValue(String(this.plugin.settings.maxHeadingLevel))
           .onChange(async (val) => {
             this.plugin.settings.maxHeadingLevel = parseInt(val, 10);
+            await this.plugin.saveSettings();
+            this.plugin.refreshAllWidgets();
+          })
+      );
+
+    // Color Theme Dropdown
+    new Setting(containerEl)
+      .setName(tr.colorThemeName)
+      .setDesc(tr.colorThemeDesc)
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption('default', tr.themeDefault)
+          .addOption('nord', 'Nord (نورد)')
+          .addOption('dracula', 'Dracula (دراکولا)')
+          .addOption('catppuccin', 'Catppuccin Mocha (کپوچین)')
+          .addOption('gruvbox', 'Gruvbox (گرووباکس)')
+          .addOption('tokyo-night', 'Tokyo Night (توکیو نایت)')
+          .addOption('solarized', 'Solarized (سولارایزد)')
+          .setValue(this.plugin.settings.colorTheme || 'default')
+          .onChange(async (val) => {
+            this.plugin.settings.colorTheme = val as BidiColorTheme;
+            await this.plugin.saveSettings();
+            this.plugin.refreshAllWidgets();
+          })
+      );
+
+    // Theme Style (Solid vs Transparent Glass)
+    new Setting(containerEl)
+      .setName(tr.themeStyleName)
+      .setDesc(tr.themeStyleDesc)
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption('solid', tr.themeStyleSolid)
+          .addOption('transparent', tr.themeStyleTransparent)
+          .setValue(this.plugin.settings.themeStyle || 'solid')
+          .onChange(async (val) => {
+            this.plugin.settings.themeStyle = val as BidiThemeStyle;
             await this.plugin.saveSettings();
             this.plugin.refreshAllWidgets();
           })
