@@ -167,6 +167,49 @@ export class BidiFlowSettingTab extends PluginSettingTab {
           key: 'rememberLastHeading',
         },
       },
+      {
+        name: tr.bottomToolbarName,
+        desc: tr.bottomToolbarDesc,
+        control: {
+          type: 'toggle',
+          key: 'showBottomToolbar',
+        },
+      },
+      {
+        name: tr.autoScrollSpeedName,
+        desc: tr.autoScrollSpeedDesc,
+        control: {
+          type: 'slider',
+          key: 'autoScrollSpeed',
+          min: 10,
+          max: 120,
+          step: 5,
+        },
+      },
+      {
+        name: tr.showAutoScrollBtnName,
+        desc: tr.showAutoScrollBtnDesc,
+        control: {
+          type: 'toggle',
+          key: 'showAutoScrollBtn',
+        },
+      },
+      {
+        name: tr.showNextPartBtnName,
+        desc: tr.showNextPartBtnDesc,
+        control: {
+          type: 'toggle',
+          key: 'showNextPartBtn',
+        },
+      },
+      {
+        name: tr.showNextSiblingBtnName,
+        desc: tr.showNextSiblingBtnDesc,
+        control: {
+          type: 'toggle',
+          key: 'showNextSiblingBtn',
+        },
+      },
     ];
   }
 
@@ -419,6 +462,77 @@ export class BidiFlowSettingTab extends PluginSettingTab {
           .onChange(async (val) => {
             this.plugin.settings.rememberLastHeading = val;
             await this.plugin.saveSettings();
+          })
+      );
+
+    // Bottom Action Toolbar Toggle
+    new Setting(containerEl)
+      .setName(tr.bottomToolbarName)
+      .setDesc(tr.bottomToolbarDesc)
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showBottomToolbar)
+          .onChange(async (val) => {
+            this.plugin.settings.showBottomToolbar = val;
+            await this.plugin.saveSettings();
+            this.plugin.refreshAllWidgets();
+          })
+      );
+
+    // Auto Scroll Speed Slider
+    new Setting(containerEl)
+      .setName(tr.autoScrollSpeedName)
+      .setDesc(tr.autoScrollSpeedDesc)
+      .addSlider((slider) =>
+        slider
+          .setLimits(10, 120, 5)
+          .setValue(this.plugin.settings.autoScrollSpeed)
+          .onChange(async (val) => {
+            this.plugin.settings.autoScrollSpeed = val;
+            await this.plugin.saveSettings();
+            this.plugin.refreshAllWidgets();
+          })
+      );
+
+    // Show Auto Scroll Button Toggle
+    new Setting(containerEl)
+      .setName(tr.showAutoScrollBtnName)
+      .setDesc(tr.showAutoScrollBtnDesc)
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showAutoScrollBtn)
+          .onChange(async (val) => {
+            this.plugin.settings.showAutoScrollBtn = val;
+            await this.plugin.saveSettings();
+            this.plugin.refreshAllWidgets();
+          })
+      );
+
+    // Show Next Part Button Toggle
+    new Setting(containerEl)
+      .setName(tr.showNextPartBtnName)
+      .setDesc(tr.showNextPartBtnDesc)
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showNextPartBtn)
+          .onChange(async (val) => {
+            this.plugin.settings.showNextPartBtn = val;
+            await this.plugin.saveSettings();
+            this.plugin.refreshAllWidgets();
+          })
+      );
+
+    // Show Next Sibling Button Toggle
+    new Setting(containerEl)
+      .setName(tr.showNextSiblingBtnName)
+      .setDesc(tr.showNextSiblingBtnDesc)
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showNextSiblingBtn)
+          .onChange(async (val) => {
+            this.plugin.settings.showNextSiblingBtn = val;
+            await this.plugin.saveSettings();
+            this.plugin.refreshAllWidgets();
           })
       );
   }

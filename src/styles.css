@@ -490,6 +490,80 @@
 }
 
 /* ==========================================================================
+   Bottom Action Toolbar
+   ========================================================================== */
+
+.bidi-flow-bottom-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  padding: 4px 8px;
+  background-color: var(--bidi-bg-alt, var(--background-secondary));
+  border-top: 1px solid var(--bidi-border, var(--background-modifier-border));
+  gap: 8px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  min-height: 36px;
+}
+
+.bidi-flow-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+  border-radius: var(--radius-s);
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bidi-flow-toolbar-btn:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border);
+  transform: translateY(-1px);
+}
+
+.bidi-flow-toolbar-btn:active {
+  transform: translateY(0);
+}
+
+.bidi-flow-toolbar-btn svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2;
+}
+
+/* Pulsing and Active state for Auto Scroll */
+@keyframes bidi-toolbar-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--interactive-accent-rgb, 120, 110, 240), 0.5);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(var(--interactive-accent-rgb, 120, 110, 240), 0);
+    transform: scale(1.06);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--interactive-accent-rgb, 120, 110, 240), 0);
+    transform: scale(1);
+  }
+}
+
+.bidi-flow-toolbar-btn.is-active,
+.bidi-flow-auto-scroll-btn.is-active {
+  color: var(--interactive-accent);
+  background-color: var(--background-modifier-active-hover);
+  border-color: var(--interactive-accent);
+  animation: bidi-toolbar-pulse 1.8s infinite ease-in-out;
+}
+
+/* ==========================================================================
    Floating Widget Overlay
    ========================================================================== */
 
@@ -917,7 +991,9 @@
 .bidi-flow-navigator[data-theme-style="transparent"] .bidi-flow-header,
 [data-theme-style="transparent"] .bidi-flow-header,
 .bidi-flow-navigator[data-theme-style="transparent"] .bidi-flow-search-box,
-[data-theme-style="transparent"] .bidi-flow-search-box {
+[data-theme-style="transparent"] .bidi-flow-search-box,
+.bidi-flow-navigator[data-theme-style="transparent"] .bidi-flow-bottom-toolbar,
+[data-theme-style="transparent"] .bidi-flow-bottom-toolbar {
   background-color: rgba(var(--bidi-card-bg-rgb), 0.28);
   border-color: rgba(var(--bidi-border-rgb), 0.22);
 }

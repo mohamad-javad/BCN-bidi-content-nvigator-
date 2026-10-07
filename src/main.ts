@@ -114,6 +114,84 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
       },
     });
 
+    this.addCommand({
+      id: 'toggle-auto-scroll',
+      name: tr.cmdToggleAutoScroll,
+      checkCallback: (checking: boolean) => {
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (view) {
+          if (!checking) {
+            const widget = this.floatingWidgets.get(view);
+            if (widget?.core) {
+              widget.core.toggleAutoScroll();
+            } else {
+              const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
+              for (const sl of sidebarLeaves) {
+                if (sl.view instanceof BidiFlowSidebarView && sl.view.core) {
+                  sl.view.core.toggleAutoScroll();
+                  break;
+                }
+              }
+            }
+          }
+          return true;
+        }
+        return false;
+      },
+    });
+
+    this.addCommand({
+      id: 'jump-to-next-part',
+      name: tr.cmdNextPart,
+      checkCallback: (checking: boolean) => {
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (view) {
+          if (!checking) {
+            const widget = this.floatingWidgets.get(view);
+            if (widget?.core) {
+              widget.core.jumpNextPart();
+            } else {
+              const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
+              for (const sl of sidebarLeaves) {
+                if (sl.view instanceof BidiFlowSidebarView && sl.view.core) {
+                  sl.view.core.jumpNextPart();
+                  break;
+                }
+              }
+            }
+          }
+          return true;
+        }
+        return false;
+      },
+    });
+
+    this.addCommand({
+      id: 'jump-to-next-sibling',
+      name: tr.cmdNextSibling,
+      checkCallback: (checking: boolean) => {
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (view) {
+          if (!checking) {
+            const widget = this.floatingWidgets.get(view);
+            if (widget?.core) {
+              widget.core.jumpNextSibling();
+            } else {
+              const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
+              for (const sl of sidebarLeaves) {
+                if (sl.view instanceof BidiFlowSidebarView && sl.view.core) {
+                  sl.view.core.jumpNextSibling();
+                  break;
+                }
+              }
+            }
+          }
+          return true;
+        }
+        return false;
+      },
+    });
+
     // 4. Register Settings Tab
     this.addSettingTab(new BidiFlowSettingTab(this.app, this));
 

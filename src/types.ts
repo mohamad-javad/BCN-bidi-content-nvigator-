@@ -22,6 +22,11 @@ export interface BidiFlowSettings {
   themeStyle: BidiThemeStyle;
   rememberLastHeading: boolean;
   savedHeadingPositions: Record<string, SavedHeadingPosition>;
+  showBottomToolbar: boolean;
+  autoScrollSpeed: number;
+  showAutoScrollBtn: boolean;
+  showNextPartBtn: boolean;
+  showNextSiblingBtn: boolean;
 }
 
 export interface SavedHeadingPosition {
@@ -48,6 +53,11 @@ export const DEFAULT_SETTINGS: BidiFlowSettings = {
   themeStyle: 'solid',
   rememberLastHeading: true,
   savedHeadingPositions: {},
+  showBottomToolbar: true,
+  autoScrollSpeed: 30,
+  showAutoScrollBtn: true,
+  showNextPartBtn: true,
+  showNextSiblingBtn: true,
 };
 
 export interface BidiHeadingNode {

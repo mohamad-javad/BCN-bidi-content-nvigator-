@@ -9,7 +9,7 @@ import {
 } from 'obsidian';
 import { BidiHeadingNode, BidiFlowSettings, SectionNavigationDirection, SurroundingHeadings, NavigatorDisplayMode } from './types';
 import { cleanHeadingText, toPersianDigits, isRtlText, detectDocumentDirection } from './utils';
-import { getActiveHeading, getSurroundingHeadings, scrollToHeading } from './scrollSpy';
+import { getActiveHeading, getSurroundingHeadings, scrollToHeading, getCodeMirrorView } from './scrollSpy';
 import { t } from './i18n';
 
 export class BidiFlowNavigatorCore extends Component {
@@ -41,6 +41,17 @@ export class BidiFlowNavigatorCore extends Component {
   // Tree Elements
   private treeContainerEl!: HTMLElement;
   private emptyStateEl!: HTMLElement;
+
+  // Bottom Toolbar Elements
+  private bottomToolbarEl!: HTMLElement;
+  private autoScrollBtnEl!: HTMLButtonElement;
+  private nextPartBtnEl!: HTMLButtonElement;
+  private nextSiblingBtnEl!: HTMLButtonElement;
+
+  // Auto Scroll Engine State
+  private isAutoScrolling = false;
+  private autoScrollRafId: number | null = null;
+  private autoScrollLastTimestamp = 0;
 
   // Data & State
   private rawHeadings: HeadingCache[] = [];
@@ -93,6 +104,18 @@ export class BidiFlowNavigatorCore extends Component {
     }
     if (this.progressBarEl) {
       this.progressBarEl.toggleVisibility(this.settings.showProgressBar);
+    }
+    if (this.bottomToolbarEl) {
+      this.bottomToolbarEl.toggleVisibility(this.settings.showBottomToolbar);
+    }
+    if (this.autoScrollBtnEl) {
+      this.autoScrollBtnEl.toggleVisibility(this.settings.showAutoScrollBtn);
+    }
+    if (this.nextPartBtnEl) {
+      this.nextPartBtnEl.toggleVisibility(this.settings.showNextPartBtn);
+    }
+    if (this.nextSiblingBtnEl) {
+      this.nextSiblingBtnEl.toggleVisibility(this.settings.showNextSiblingBtn);
     }
     this.refreshHeadings();
   }
@@ -244,12 +267,65 @@ export class BidiFlowNavigatorCore extends Component {
       text: tr.noHeadings
     });
     this.emptyStateEl.hide();
+
+    // 5. Bottom Action Toolbar
+    this.bottomToolbarEl = this.containerEl.createDiv({ cls: 'bidi-flow-bottom-toolbar' });
+    if (!this.settings.showBottomToolbar) {
+      this.bottomToolbarEl.hide();
+    }
+
+    // Auto Scroll Button
+    this.autoScrollBtnEl = this.bottomToolbarEl.createEl('button', {
+      cls: 'clickable-icon bidi-flow-btn bidi-flow-toolbar-btn bidi-flow-auto-scroll-btn',
+      attr: { 'aria-label': tr.autoScrollStart }
+    });
+    setIcon(this.autoScrollBtnEl, 'play');
+    setTooltip(this.autoScrollBtnEl, tr.autoScrollStart);
+    if (!this.settings.showAutoScrollBtn) {
+      this.autoScrollBtnEl.hide();
+    }
+
+    // Next Part Button (Smart Page / Heading Jump)
+    this.nextPartBtnEl = this.bottomToolbarEl.createEl('button', {
+      cls: 'clickable-icon bidi-flow-btn bidi-flow-toolbar-btn bidi-flow-next-part-btn',
+      attr: { 'aria-label': tr.nextPart }
+    });
+    setIcon(this.nextPartBtnEl, 'chevrons-down');
+    setTooltip(this.nextPartBtnEl, tr.nextPart);
+    if (!this.settings.showNextPartBtn) {
+      this.nextPartBtnEl.hide();
+    }
+
+    // Next Sibling / Parent Button
+    this.nextSiblingBtnEl = this.bottomToolbarEl.createEl('button', {
+      cls: 'clickable-icon bidi-flow-btn bidi-flow-toolbar-btn bidi-flow-next-sibling-btn',
+      attr: { 'aria-label': tr.nextSibling }
+    });
+    setIcon(this.nextSiblingBtnEl, 'list-tree');
+    setTooltip(this.nextSiblingBtnEl, tr.nextSibling);
+    if (!this.settings.showNextSiblingBtn) {
+      this.nextSiblingBtnEl.hide();
+    }
   }
 
   private registerDomEvents(): void {
     // Navigation jumps
     this.prevBtnEl.addEventListener('click', () => this.jumpSection('prev'));
     this.nextBtnEl.addEventListener('click', () => this.jumpSection('next'));
+
+    // Toolbar actions
+    this.autoScrollBtnEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggleAutoScroll();
+    });
+    this.nextPartBtnEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.jumpNextPart();
+    });
+    this.nextSiblingBtnEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.jumpNextSibling();
+    });
 
     // Search filter
     const debouncedFilter = debounce((query: string) => {
@@ -463,22 +539,7 @@ export class BidiFlowNavigatorCore extends Component {
 
         // Click handler to jump to section
         rowEl.addEventListener('click', () => {
-          if (this.currentView) {
-            this.isUserInteractingWithTree = false;
-            // Instantly update active heading, UI badge, tree highlight, and progress bar
-            this.activeHeading = node.heading;
-            this.onActiveHeadingChange?.(node.heading);
-            const surrounding = getSurroundingHeadings(this.rawHeadings, node.heading);
-            this.activeIndex = surrounding.activeIndex;
-            this.updateHeaderDisplay(surrounding);
-            this.highlightActiveInTree();
-            this.calculateReadingProgress();
-
-            scrollToHeading(this.currentView, node.heading, 'smooth');
-            if (this.currentView.getMode() !== 'preview') {
-              this.currentView.editor?.focus();
-            }
-          }
+          this.jumpToSpecificHeading(node.heading);
         });
 
         // Render nested children if expanded
@@ -628,6 +689,7 @@ export class BidiFlowNavigatorCore extends Component {
   }
 
   private detachScrollListener(): void {
+    this.stopAutoScroll();
     if (this.rafId !== null) {
       window.cancelAnimationFrame(this.rafId);
       this.rafId = null;
@@ -896,20 +958,267 @@ export class BidiFlowNavigatorCore extends Component {
     const target = direction === 'prev' ? surrounding.prev : surrounding.next;
 
     if (target) {
-      this.isUserInteractingWithTree = false;
-      // Instantly update active heading, UI badge, tree highlight, and progress bar
-      this.activeHeading = target;
-      this.onActiveHeadingChange?.(target);
-      const targetSurrounding = getSurroundingHeadings(this.rawHeadings, target);
-      this.activeIndex = targetSurrounding.activeIndex;
-      this.updateHeaderDisplay(targetSurrounding);
-      this.highlightActiveInTree();
-      this.calculateReadingProgress();
+      this.jumpToSpecificHeading(target);
+    }
+  }
 
-      scrollToHeading(this.currentView, target, 'smooth');
-      if (this.currentView.getMode() !== 'preview') {
-        this.currentView.editor?.focus();
+  public jumpToSpecificHeading(target: HeadingCache): void {
+    if (!this.currentView) return;
+    this.stopAutoScroll();
+    this.isUserInteractingWithTree = false;
+
+    // Instantly update active heading, UI badge, tree highlight, and progress bar
+    this.activeHeading = target;
+    this.onActiveHeadingChange?.(target);
+    const targetSurrounding = getSurroundingHeadings(this.rawHeadings, target);
+    this.activeIndex = targetSurrounding.activeIndex;
+    this.updateHeaderDisplay(targetSurrounding);
+    this.highlightActiveInTree();
+    this.calculateReadingProgress();
+
+    scrollToHeading(this.currentView, target, 'smooth');
+    if (this.currentView.getMode() !== 'preview') {
+      this.currentView.editor?.focus();
+    }
+  }
+
+  public toggleAutoScroll(): void {
+    if (this.isAutoScrolling) {
+      this.stopAutoScroll();
+    } else {
+      this.startAutoScroll();
+    }
+  }
+
+  public startAutoScroll(): void {
+    if (!this.currentView) return;
+    this.isAutoScrolling = true;
+    if (this.autoScrollBtnEl) {
+      this.autoScrollBtnEl.addClass('is-active');
+      setIcon(this.autoScrollBtnEl, 'pause');
+      const tr = t(this.settings.uiLanguage);
+      setTooltip(this.autoScrollBtnEl, tr.autoScrollStop);
+      this.autoScrollBtnEl.setAttribute('aria-label', tr.autoScrollStop);
+    }
+    this.autoScrollLastTimestamp = performance.now();
+
+    const step = (now: number) => {
+      if (!this.isAutoScrolling || !this.currentView) {
+        this.stopAutoScroll();
+        return;
       }
+      const deltaMs = Math.min(100, Math.max(1, now - this.autoScrollLastTimestamp));
+      this.autoScrollLastTimestamp = now;
+
+      const speed = Math.max(5, this.settings.autoScrollSpeed || 30);
+      const deltaPx = (speed * deltaMs) / 1000;
+
+      let atBottom = false;
+      if (this.currentView.getMode() === 'preview') {
+        const container = this.currentView.previewMode?.containerEl;
+        if (container) {
+          const maxScroll = container.scrollHeight - container.clientHeight;
+          if (container.scrollTop + deltaPx >= maxScroll - 3) {
+            container.scrollTop = maxScroll;
+            atBottom = true;
+          } else {
+            container.scrollTop += deltaPx;
+          }
+        }
+      } else {
+        const scroller = this.currentView.contentEl.querySelector<HTMLElement>('.cm-scroller');
+        if (scroller) {
+          const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+          if (scroller.scrollTop + deltaPx >= maxScroll - 3) {
+            scroller.scrollTop = maxScroll;
+            atBottom = true;
+          } else {
+            scroller.scrollTop += deltaPx;
+          }
+        }
+      }
+
+      if (atBottom) {
+        this.stopAutoScroll();
+        return;
+      }
+
+      this.autoScrollRafId = requestAnimationFrame(step);
+    };
+
+    if (this.autoScrollRafId !== null) {
+      cancelAnimationFrame(this.autoScrollRafId);
+    }
+    this.autoScrollRafId = requestAnimationFrame(step);
+  }
+
+  public stopAutoScroll(): void {
+    if (this.autoScrollRafId !== null) {
+      cancelAnimationFrame(this.autoScrollRafId);
+      this.autoScrollRafId = null;
+    }
+    this.isAutoScrolling = false;
+    if (this.autoScrollBtnEl) {
+      this.autoScrollBtnEl.removeClass('is-active');
+      setIcon(this.autoScrollBtnEl, 'play');
+      const tr = t(this.settings.uiLanguage);
+      setTooltip(this.autoScrollBtnEl, tr.autoScrollStart);
+      this.autoScrollBtnEl.setAttribute('aria-label', tr.autoScrollStart);
+    }
+  }
+
+  public jumpNextPart(): void {
+    if (!this.currentView) return;
+    this.stopAutoScroll();
+
+    if (this.rawHeadings.length === 0) {
+      this.scrollPageDown();
+      return;
+    }
+
+    const surrounding = getSurroundingHeadings(this.rawHeadings, this.activeHeading);
+    const nextHeading = surrounding.next;
+
+    if (!nextHeading) {
+      this.scrollPageDown();
+      return;
+    }
+
+    const mode = this.currentView.getMode();
+    if (mode === 'preview') {
+      const container = this.currentView.previewMode?.containerEl;
+      if (!container) return;
+      const viewportHeight = container.clientHeight;
+
+      const headingEls = Array.from(
+        container.querySelectorAll<HTMLHeadingElement>('h1, h2, h3, h4, h5, h6')
+      );
+      const cleanTarget = cleanHeadingText(nextHeading.heading);
+      const targetEl = headingEls.find(el => {
+        const dataH = el.getAttribute('data-heading');
+        const textH = el.textContent?.trim();
+        return (
+          dataH === nextHeading.heading ||
+          textH === nextHeading.heading.trim() ||
+          (dataH && cleanHeadingText(dataH) === cleanTarget) ||
+          (textH && cleanHeadingText(textH) === cleanTarget)
+        );
+      });
+
+      if (targetEl) {
+        const containerRect = container.getBoundingClientRect();
+        const targetRect = targetEl.getBoundingClientRect();
+        const distancePx = targetRect.top - containerRect.top;
+
+        if (distancePx > viewportHeight * 0.9) {
+          container.scrollBy({ top: Math.round(viewportHeight * 0.85), behavior: 'smooth' });
+        } else {
+          this.jumpToSpecificHeading(nextHeading);
+        }
+      } else {
+        container.scrollBy({ top: Math.round(viewportHeight * 0.85), behavior: 'smooth' });
+      }
+    } else {
+      // Live Preview / Edit Mode
+      const scroller = this.currentView.contentEl.querySelector<HTMLElement>('.cm-scroller');
+      if (!scroller) return;
+      const viewportHeight = scroller.clientHeight;
+      const currentScrollTop = scroller.scrollTop;
+
+      let headingPixelTop: number | null = null;
+      const editor = this.currentView.editor;
+      if (editor) {
+        const cm = getCodeMirrorView(editor);
+        if (cm?.state?.doc) {
+          const targetLine1 = nextHeading.position.start.line + 1;
+          if (targetLine1 <= cm.state.doc.lines) {
+            const lineFrom = cm.state.doc.line(targetLine1).from;
+            const block = cm.lineBlockAt ? cm.lineBlockAt(lineFrom) : null;
+            if (block) {
+              headingPixelTop = block.top;
+            }
+          }
+        }
+      }
+
+      if (headingPixelTop !== null) {
+        const distancePx = headingPixelTop - currentScrollTop;
+        if (distancePx > viewportHeight * 0.9) {
+          scroller.scrollBy({ top: Math.round(viewportHeight * 0.85), behavior: 'smooth' });
+        } else {
+          this.jumpToSpecificHeading(nextHeading);
+        }
+      } else {
+        const currentLine = typeof (this.currentView as unknown as { currentMode?: MarkdownSubView })?.currentMode?.getScroll === 'function'
+          ? (this.currentView as unknown as { currentMode?: MarkdownSubView }).currentMode!.getScroll()
+          : (this.activeHeading ? this.activeHeading.position.start.line : 0);
+        const targetLine = nextHeading.position.start.line;
+        const linesDifference = targetLine - currentLine;
+        if (linesDifference * 24 > viewportHeight * 0.9) {
+          scroller.scrollBy({ top: Math.round(viewportHeight * 0.85), behavior: 'smooth' });
+        } else {
+          this.jumpToSpecificHeading(nextHeading);
+        }
+      }
+    }
+  }
+
+  private scrollPageDown(): void {
+    if (!this.currentView) return;
+    if (this.currentView.getMode() === 'preview') {
+      const container = this.currentView.previewMode?.containerEl;
+      if (container) {
+        const scrollStep = Math.round(container.clientHeight * 0.85);
+        container.scrollBy({ top: scrollStep, behavior: 'smooth' });
+      }
+    } else {
+      const scroller = this.currentView.contentEl.querySelector<HTMLElement>('.cm-scroller');
+      if (scroller) {
+        const scrollStep = Math.round(scroller.clientHeight * 0.85);
+        scroller.scrollBy({ top: scrollStep, behavior: 'smooth' });
+      }
+    }
+  }
+
+  public jumpNextSibling(): void {
+    if (!this.currentView || this.rawHeadings.length === 0) return;
+    this.stopAutoScroll();
+
+    if (!this.activeHeading) {
+      this.jumpToSpecificHeading(this.rawHeadings[0]);
+      return;
+    }
+
+    const currIdx = this.activeIndex >= 0 ? this.activeIndex : this.rawHeadings.indexOf(this.activeHeading);
+    if (currIdx === -1) {
+      this.jumpToSpecificHeading(this.rawHeadings[0]);
+      return;
+    }
+
+    const currLevel = this.activeHeading.level;
+
+    // If at level 1 or 2: advance to next heading directly
+    if (currLevel <= 2) {
+      if (currIdx + 1 < this.rawHeadings.length) {
+        this.jumpToSpecificHeading(this.rawHeadings[currIdx + 1]);
+      }
+      return;
+    }
+
+    // If at level 3, 4, 5, 6: search forward for next sibling (same level) or parent section (level < currLevel)
+    let target: HeadingCache | null = null;
+    for (let i = currIdx + 1; i < this.rawHeadings.length; i++) {
+      const h = this.rawHeadings[i];
+      if (h.level <= currLevel) {
+        target = h;
+        break;
+      }
+    }
+
+    if (target) {
+      this.jumpToSpecificHeading(target);
+    } else if (currIdx + 1 < this.rawHeadings.length) {
+      this.jumpToSpecificHeading(this.rawHeadings[currIdx + 1]);
     }
   }
 
