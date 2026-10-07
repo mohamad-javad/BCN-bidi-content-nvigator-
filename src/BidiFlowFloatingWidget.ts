@@ -1,4 +1,4 @@
-import { Component, MarkdownView, setIcon, setTooltip, HeadingCache } from 'obsidian';
+import { Component, MarkdownView, setIcon, setTooltip, HeadingCache, Platform } from 'obsidian';
 import { BidiFlowNavigatorCore } from './BidiFlowNavigatorCore';
 import { BidiFlowSettings, NavigatorDisplayMode } from './types';
 import { t } from './i18n';
@@ -25,7 +25,7 @@ export class BidiFlowFloatingWidget extends Component {
     this.view = view;
     this.settings = settings;
     this.onHeadingChange = onHeadingChange;
-    this.currentMode = settings.defaultMode || 'floating';
+    this.currentMode = (Platform.isMobile && settings.defaultMode === 'full-height') ? 'floating' : (settings.defaultMode || 'floating');
     if (this.currentMode !== 'mini') {
       this.previousExpandedMode = this.currentMode;
     }
@@ -120,6 +120,7 @@ export class BidiFlowFloatingWidget extends Component {
   }
 
   public toggleMaximizeRestore(): void {
+    if (Platform.isMobile) return;
     if (this.currentMode === 'floating') {
       this.setMode('full-height');
     } else if (this.currentMode === 'full-height') {
@@ -138,6 +139,10 @@ export class BidiFlowFloatingWidget extends Component {
   }
 
   public cycleMode(): void {
+    if (Platform.isMobile) {
+      this.toggleMini();
+      return;
+    }
     if (this.currentMode === 'mini') {
       this.setMode('floating');
     } else if (this.currentMode === 'floating') {

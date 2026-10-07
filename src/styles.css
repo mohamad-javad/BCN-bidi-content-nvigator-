@@ -729,7 +729,7 @@
 }
 
 /* ==========================================================================
-   Mobile & Phone Responsive Positioning
+   Mobile & Phone Responsive Positioning & Layout
    ========================================================================== */
 
 .is-phone .bidi-floating-navigator.is-mode-mini,
@@ -742,9 +742,18 @@
   top: 88px;
 }
 
+/* Shorter floating window length on mobile for unobtrusive access */
 .is-phone .bidi-floating-navigator.is-mode-floating .bidi-floating-card,
-.is-mobile .bidi-floating-navigator.is-mode-floating .bidi-floating-card {
-  max-height: calc(100vh - 180px);
+.is-mobile .bidi-floating-navigator.is-mode-floating .bidi-floating-card,
+.is-phone .bidi-floating-navigator.is-mode-full-height .bidi-floating-card,
+.is-mobile .bidi-floating-navigator.is-mode-full-height .bidi-floating-card {
+  max-height: min(320px, calc(100vh - 220px));
+}
+
+/* Remove/hide maximize button on mobile */
+.is-phone .bidi-flow-btn-mode,
+.is-mobile .bidi-flow-btn-mode {
+  display: none !important;
 }
 
 @media (max-width: 768px) {
@@ -754,8 +763,12 @@
   .bidi-floating-navigator.is-mode-floating {
     top: 88px;
   }
-  .bidi-floating-navigator.is-mode-floating .bidi-floating-card {
-    max-height: calc(100vh - 180px);
+  .bidi-floating-navigator.is-mode-floating .bidi-floating-card,
+  .bidi-floating-navigator.is-mode-full-height .bidi-floating-card {
+    max-height: min(320px, calc(100vh - 220px));
+  }
+  .bidi-flow-btn-mode {
+    display: none !important;
   }
 }
 

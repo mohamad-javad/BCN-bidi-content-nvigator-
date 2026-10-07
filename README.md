@@ -5,64 +5,53 @@
 [![Latest Release](https://img.shields.io/badge/release-v1.2.0-emerald.svg)](https://github.com/mohamad-javad/BCN-bidi-content-nvigator-/releases)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-**BiDi Flow Navigator** is a modern, high-performance document heading outline and navigator plugin for [Obsidian](https://obsidian.md). Engineered with first-class support for **Bidirectional (BiDi) typography (Persian, Arabic, and mixed RTL/LTR)**, it provides smooth section-by-section navigation, real-time scroll-spy, a 3-mode flexible window system, reading progress calculation, cross-mode scroll position memory, customizable color themes, synchronized auto-scrolling, and instant search.
+**BiDi Flow Navigator** is a document outline and navigation plugin for [Obsidian](https://obsidian.md). Specifically built to handle **Bidirectional (BiDi) text (Persian, Arabic, and mixed RTL/LTR)**, it provides heading tracking, section jumping, reading progress calculation, position memory across mode switches, customizable themes, and synchronized auto-scrolling across devices.
 
 ---
 
-## ✨ Key Features
+## Features
 
-- **🌐 First-Class BiDi & RTL Typography:**
-  Built with modern CSS Logical Properties (`margin-inline-start`, `border-inline-start`, `inset-inline-*`), `dir="auto"`, and `unicode-bidi: plaintext`. Seamlessly handles Persian, Arabic, English, code snippets, numbers, and compound technical terms.
+### Bidirectional & RTL Text Handling
+- Built with CSS Logical Properties (`margin-inline-start`, `inset-inline-*`), `dir="auto"`, and Unicode bidirectional rules.
+- Correctly aligns and structures mixed headings containing Persian, Arabic, English words, numbers, and technical terms.
 
-- **⚡ Symmetrical Action Toolbar & Unified Auto-Scroll (`v1.2.0`):**
-  - **Symmetrical 5-Button Toolbar:** Features `[⏮️ Prev Sibling]` `[🔼 Prev Part]` `[▶️ Auto Scroll]` `[🔽 Next Part]` `[⏭️ Next Sibling]`.
-  - **Cross-Window State Synchronization:** Toggling Auto-Scroll from the floating card, sidebar view, or command palette instantly syncs play/pause indicators and active states across all panels.
-  - **Smooth Sub-pixel 60fps Auto-Scroll:** Engineered with fractional pixel accumulators (`autoScrollAccumulator`) and DOM scroll targeting for both Reading View (`.markdown-preview-view`) and Edit View (`.cm-scroller`), supporting speeds from 10 to 200 px/s without stuttering.
-  - **Intelligent Deep Heading Jumps:** Sibling jumps on H1/H2 skip nested sub-headings; deep headings (H3+) jump smartly to their parent heading or sibling based on settings.
-  - **Shadowless Flat Glass Design:** Clean, modern shadow-free appearance for the floating card and compass toggle pill.
+### Synchronized Auto-Scroll & 5-Button Toolbar
+- **Symmetrical Action Toolbar:** Bottom navigation bar containing:
+  - `⏮️ Prev Sibling`: Jump backward across headings at the same or higher level.
+  - `🔼 Prev Part`: Jump backward by page or section.
+  - `▶️ Auto Scroll`: Smooth continuous downward scroll with adjustable speed (10 to 200 px/s).
+  - `🔽 Next Part`: Jump forward by page or section.
+  - `⏭️ Next Sibling`: Jump forward to the next sibling or parent heading.
+- **Cross-Window State Synchronization:** Toggling Auto-Scroll from either the floating window, the right sidebar, or via command palette synchronizes the play/pause state across all open panels.
+- **Sub-Pixel Motion:** Uses float accumulators to prevent stuttering or truncation at lower reading speeds (10–30 px/s) in both Reading View and Editing View.
+- **Deep Heading Logic:** Sibling navigation on H1/H2 skips nested subheadings. For H3 and deeper headings, jumping can target the parent section or same-level siblings based on your preference.
 
-- **🔖 Heading Memory & Cross-Mode Synchronization (`v1.1.11`):**
-  - **Remembers Last Heading:** Automatically saves your active reading heading per note and restores your position when reopening notes or restarting Obsidian.
-  - **Unified Mode Sync:** Synchronizes your exact reading position when toggling between **Editing View** (Live Preview / Source) and **Reading View** without disruptive jumps to the top of the file.
+### Position Memory & Mode Synchronization
+- **Remember Last Heading:** Remembers your active reading location per note and restores it when reopening files or restarting Obsidian.
+- **Editing & Reading View Parity:** Keeps your exact reading position when toggling between Live Preview/Source and Reading View.
 
-- **🪟 3-Mode Window System:**
-  1. **Compact Pill (`mini`):** A sleek circular floating compass button in the note corner for distraction-free writing.
-  2. **Floating Card (`floating`):** Modern glassmorphism floating card with responsive height and quick actions.
-  3. **Full-Height Rail (`full-height`):** Full vertical editor height dock for extensive long-form writing and research.
-  - Switch between modes with one click using the header window control buttons (`maximize-2` / `minus`).
+### Adaptable Window System
+1. **Compact Pill (`mini`):** A small floating compass button docked in the corner for distraction-free reading.
+2. **Floating Card (`floating`):** A compact floating card with quick controls, responsive height, and heading tree.
+3. **Full-Height Rail (`full-height`):** Full-height side dock suitable for large desktop monitors.
+- **Mobile-Tailored Ergonomics:** On mobile phones, the floating window automatically positions itself lower (`88px` from the top) to stay clear of app headers, uses a compact maximum height, and disables full-height expansion for clean touch navigation.
 
-- **🎯 60fps Scroll-Spy Engine:**
-  - Accurately tracks your position in both **Live Preview / Source Mode** (via CodeMirror 6 document height-map measurements) and **Reading View**.
-  - High-performance binary search $O(\log N)$ with `requestAnimationFrame` debouncing ensures zero lag even in 10,000+ line notes.
+### Visual Themes & Design
+- **Color Themes:** Includes **Default Obsidian**, **Dracula**, **Nord**, **Solarized**, and **Gruvbox**.
+- **Styles:** Choose between **Solid** and translucent **Glassmorphism** styling.
+- **Minimalist Finish:** Clean flat borders without heavy drop shadows.
 
-- **🎨 Curated Color Themes & Translucent Styles:**
-  - Multiple built-in palettes: **Default Obsidian**, **Dracula**, **Nord**, **Solarized**, and **Gruvbox**.
-  - Choose between **Solid** or **Translucent (Glassmorphism)** card finishes.
-  - Monolingual localized theme names that dynamically adapt to your selected UI language.
-
-- **📊 Continuous Reading Progress Bar:**
-  - Real-time reading progress bar calculated from scroller geometry.
-  - Smooth, accurate progress across the entire note without abrupt 0% to 100% jumps.
-  - Formatted with Persian digits (`۴۰٪`) or standard numerals (`40%`).
-
-- **🧭 Active Section & Jump Bar (Prev / Current / Next):**
-  - Displays the active heading with its level badge (`H1`–`H6`).
-  - Next/Previous jump buttons (`‹` / `›`) with heading tooltips for instantaneous navigation.
-  - Active section counter (e.g. `۴۱ / ۱۰۸`).
-
-- **🔍 Real-Time Heading Filter & Search:**
-  - Filter through hundreds of headings instantly.
-  - Auto-expands matching branches while typing.
-
-- **🔤 Clean Language Localization (English / فارسی):**
-  - Instant toggle between pure **English** and pure **Persian**.
-  - All UI elements, window controls, tooltips, commands, themes, and settings re-render immediately upon selection.
+### Outline Features
+- **Reading Progress Bar:** Displays real-time reading progress with optional Persian digits (`۴۰٪`).
+- **Heading Search:** Real-time filter that auto-expands matching parent branches.
+- **Section Indicator:** Displays active heading with level tag (`H1`–`H6`) and counter (`۱۵ / ۱۰۱`).
+- **Pure Bilingual UI:** Switch completely between English and Persian without mixed-language artifacts.
 
 ---
 
-## 📸 Screenshots & Showcase
+## Screenshots
 
-### 🖥️ Unified Dual-Window Showcase (Floating Card & Right Sidebar)
+### Desktop: Dual-Window Outline (Floating Card & Sidebar)
 
 <p align="center">
   <img src="assets/desktop-unified-dark.png" alt="BiDi Flow Navigator Dark Theme" width="32%" />
@@ -72,10 +61,10 @@
   <img src="assets/desktop-unified-sepia.png" alt="BiDi Flow Navigator Sepia Theme" width="32%" />
 </p>
 <p align="center">
-  <em>BiDi Flow Navigator across Dark, Light, and Warm palettes: Simultaneous floating card and dedicated right sidebar outline with synchronized 5-button bottom toolbar and Persian heading numerals.</em>
+  <em>Floating card and right sidebar outline working together across Dark, Light, and Warm palettes with synchronized toolbars and Persian heading numerals.</em>
 </p>
 
-### 📱 Mobile Experience & Settings
+### Mobile View & Plugin Settings
 
 <p align="center">
   <img src="assets/mobile-dark-mode.jpg" alt="BiDi Flow Mobile Dark Mode" width="30%" />
@@ -85,154 +74,118 @@
   <img src="assets/settings-view.png" alt="BiDi Flow Settings Tab" width="35%" />
 </p>
 <p align="center">
-  <em>Left & Center: Native mobile experience with touch-optimized outline in Dark & Light modes. Right: Comprehensive configuration tab with pure language switching, toolbar customization, and auto-scroll speed controls.</em>
+  <em>Left & Center: Touch-friendly outline on phone devices with ergonomic top clearance. Right: Plugin configuration options.</em>
 </p>
 
 ---
 
-## 📥 Installation
+## Installation
 
-### Method 1: Using BRAT (Recommended for Beta)
+### Using BRAT (Beta Releases)
 1. Install the **Obsidian42 - BRAT** community plugin.
-2. In BRAT settings, click **Add Beta plugin**.
-3. Enter this repository URL:
+2. Under BRAT settings, select **Add Beta plugin**.
+3. Enter repository URL:
    ```text
    https://github.com/mohamad-javad/BCN-bidi-content-nvigator-
    ```
-4. Click **Add Plugin** and enable **BiDi Flow Navigator** in Obsidian's Community Plugins list.
+4. Enable **BiDi Flow Navigator** under **Settings > Community plugins**.
 
-### Method 2: Manual Installation
-1. Download `main.js`, `manifest.json`, and `styles.css` from the latest [GitHub Release](https://github.com/mohamad-javad/BCN-bidi-content-nvigator-/releases).
-2. Create a folder named `bidi-flow-navigator` inside your vault:
-   ```bash
-   <Your-Vault>/.obsidian/plugins/bidi-flow-navigator/
-   ```
+### Manual Installation
+1. Download `main.js`, `manifest.json`, and `styles.css` from the latest [Release](https://github.com/mohamad-javad/BCN-bidi-content-nvigator-/releases).
+2. Create a folder named `bidi-flow-navigator` in your vault at `.obsidian/plugins/bidi-flow-navigator/`.
 3. Copy the downloaded files into that folder.
-4. Reload Obsidian (`Ctrl + R`) and enable **BiDi Flow Navigator** under **Settings > Community plugins**.
+4. Reload Obsidian and enable the plugin in Community Plugins.
 
 ---
 
-## ⌨️ Command Palette
+## Commands
 
-Press `Ctrl + P` (or `Cmd + P` on macOS) to access plugin commands:
-
-| Command | Description |
+| Command | Action |
 | :--- | :--- |
-| **Open in Sidebar** | Opens the heading navigator in the active sidebar leaf. |
-| **Toggle Auto Scroll** | Starts or stops synchronized smooth auto-scrolling. |
-| **Jump to Next Part** | Smart page / heading jump forward. |
-| **Jump to Previous Part** | Smart page / heading jump backward. |
-| **Jump to Next Sibling** | Jumps to the next sibling or parent heading. |
-| **Jump to Previous Sibling** | Jumps to the previous sibling or parent heading. |
-| **Jump to Next Section** | Scrolls the editor to the next document heading. |
-| **Jump to Previous Section** | Scrolls the editor to the previous document heading. |
-| **Toggle Floating Navigator** | Toggles the floating widget between minimized pill and expanded card. |
-| **Cycle Window Mode** | Cycles through the 3 modes: Mini Pill ➔ Floating Card ➔ Full-Height Rail. |
+| **Open in Sidebar** | Opens the heading outline in the right sidebar. |
+| **Toggle Auto Scroll** | Starts or stops synchronized auto-scrolling. |
+| **Jump to Next Part** | Advances by a page or to the next heading. |
+| **Jump to Previous Part** | Moves back by a page or to the previous heading. |
+| **Jump to Next Sibling** | Advances to the next sibling or parent heading. |
+| **Jump to Previous Sibling** | Moves back to the previous sibling or parent heading. |
+| **Jump to Next Section** | Scrolls directly to the next document heading. |
+| **Jump to Previous Section** | Scrolls directly to the previous document heading. |
+| **Toggle Floating Navigator** | Toggles between mini pill and floating card. |
+| **Cycle Window Mode** | Switches window display modes. |
 
 ---
 
-## ⚙️ Configuration
+## Settings Reference
 
-In Obsidian **Settings > BiDi Flow Navigator**:
-
-- **UI Language:** Choose between pure **Persian (فارسی)** or **English**.
-- **Show Floating Widget:** Toggle floating widget alongside markdown notes.
-- **Floating Position:** Snap widget to the **Right** or **Left** side of your notes.
-- **Default Window Mode:** Choose default initial mode (**Floating Card**, **Compact Pill**, or **Full-Height**).
-- **Floating Window Width:** Customize width from 200px to 420px (default: 260px).
-- **Color Theme:** Select visual color palette (**Default**, **Dracula**, **Nord**, **Solarized**, **Gruvbox**).
-- **Theme Style:** Choose between **Solid** or **Translucent**.
-- **Bottom Action Toolbar:** Enable or disable the 5-button bottom action toolbar.
-- **Auto Scroll Speed:** Set scrolling speed in pixels per second (10 to 200 px/s with real-time tooltip).
-- **Deep Heading Jump Target:** Choose whether H3+ headings jump to **Parent Heading** or **Sibling Heading**.
+- **UI Language:** Select interface language (**English** or **فارسی**).
+- **Show Floating Widget:** Enable or disable the floating note outline.
+- **Floating Position:** Dock the floating widget on the **Right** or **Left** side.
+- **Default Window Mode:** Set initial mode (**Floating Card**, **Compact Pill**, or **Full-Height**).
+- **Floating Window Width:** Adjust card width (200px to 420px).
+- **Color Theme:** Select color palette (**Default**, **Dracula**, **Nord**, **Solarized**, **Gruvbox**).
+- **Theme Style:** Choose between **Solid** and **Translucent**.
+- **Bottom Action Toolbar:** Toggle visibility of the 5-button bottom action bar.
+- **Auto Scroll Speed:** Set scroll rate in pixels per second (10 to 200 px/s).
+- **Deep Heading Jump Target:** Choose whether deeper headings (H3+) jump to their **Parent Heading** or **Sibling Heading**.
 - **Remember Last Heading Position:** Automatically return to the last active heading when reopening notes.
-- **Persian Numerals:** Display percentage and section counters in Persian digits (`۱، ۲، ۳...`).
-- **Reading Progress Bar:** Show/hide the top progress indicator.
-- **Search Filter:** Enable/disable real-time heading search input.
-- **Heading Level Badges:** Display colored tags for `H1`–`H6`.
+- **Persian Numerals:** Display counters and percentages in Persian digits (`۱، ۲، ۳...`).
+- **Reading Progress Bar:** Show or hide the top progress bar.
+- **Search Filter:** Enable or disable heading search.
+- **Heading Level Badges:** Show or hide colored badges for `H1`–`H6`.
 
 ---
 
-## 📋 Changelog
+## Changelog
 
-### v1.2.0 (Latest)
-- ⚡ **Symmetrical 5-Button Action Toolbar:** Added a 5-button quick navigation toolbar (`[⏮️ Prev Sibling]` `[🔼 Prev Part]` `[▶️ Auto Scroll]` `[🔽 Next Part]` `[⏭️ Next Sibling]`) with individual button toggles.
-- 🔄 **Cross-Window Auto-Scroll Synchronization:** Fully unified Auto-Scroll state between the Floating Card and Sidebar View; starting or pausing auto-scroll anywhere updates all instances simultaneously.
-- 🎯 **Sub-Pixel 60fps Smooth Auto-Scroll:** Engineered with mathematical float accumulators (`autoScrollAccumulator`) and DOM scroll targeting for both Reading View (`.markdown-preview-view`) and Edit View (`.cm-scroller`), supporting speeds from 10 to 200 px/s without stuttering or stalling.
-- 🧠 **Smart Deep Heading Jumps:** For H1 and H2, sibling jumps leap over child sub-headings; for H3+, users can choose to jump to the parent heading (H2/H1) or same-level sibling.
-- 🎨 **Shadowless Modern Aesthetic:** Removed drop shadows from floating card windows and pill toggle buttons for a cleaner, flat glassmorphism look.
-- ⚙️ **Enhanced Speed Controls:** Dynamic tooltip slider from 10 to 200 px/s and explicit Obsidian restart notices for toolbar configuration changes.
+### v1.2.0
+- **Unified Auto-Scroll:** Synchronized auto-scroll state across the floating window, sidebar view, and command palette.
+- **Symmetrical 5-Button Toolbar:** Added quick-action navigation controls (`Prev Sibling`, `Prev Part`, `Auto Scroll`, `Next Part`, `Next Sibling`).
+- **Sub-Pixel Motion Engine:** Fixed scrolling in Reading View (`.markdown-preview-view`) and implemented sub-pixel accumulation for smooth movement at speeds below 30 px/s.
+- **Smart Deep Heading Navigation:** Added setting to jump to parent headings when navigating nested sections (H3+).
+- **Mobile Ergonomics:** Lowered floating widget position on mobile phones (`top: 88px`), reduced maximum card height, and disabled full-height expansion on mobile screens.
+- **Minimalist Aesthetic:** Removed drop shadows from floating cards and toggle pills.
 
 ### v1.1.11
-- 🔖 **Smart Heading Memory:** Automatically saves your active reading heading per note and restores your position when reopening notes or restarting Obsidian.
-- 🔄 **Unified Mode Synchronization:** Eliminated the native Obsidian scroll-reset bug when switching between Edit Mode (Live Preview) and Reading View with asynchronous render retry (`scrollWithRetry`).
-- 🎨 **Monolingual Theme Localization:** Theme names dynamically reflect the selected UI language without confusing mixed bilingual text.
-- 📱 **Mobile Refinements:** Enhanced touch navigation, scroll isolation, and responsive card sizing for Obsidian mobile.
-- 🐛 **Scroll-Spy Stabilization:** Eliminated transient zero-scroll race conditions during container mounting and mode switches.
+- **Heading Memory:** Remembers active reading heading per note across sessions.
+- **Mode Switching Parity:** Fixed position loss when toggling between Live Preview and Reading View.
+- **Localized Themes:** Standardized theme names to match the active UI language.
+- **Mobile Polish:** Refined touch handling and card sizing on mobile devices.
 
 ### v1.1.0
-- 🎨 **Themes & Styling:** Introduced color themes (Dracula, Nord, Gruvbox, Solarized) and glassmorphism translucent style presets.
-- 🌐 **Instant Language Switcher:** On-the-fly toggling between Persian and English UI without needing to reload Obsidian.
+- **Theme Palettes:** Added Dracula, Nord, Gruvbox, Solarized, and Default themes.
+- **Visual Styles:** Added Solid and Translucent (Glassmorphism) styles.
+- **Language Switcher:** Instant runtime switching between Persian and English.
 
 ### v1.0.1
-- 🚀 **Initial Core Architecture:** 3-mode flexible window system (Mini Pill, Floating Card, Full-Height Rail), bidirectional outline parser, continuous reading progress bar, real-time heading filter, and sidebar panel.
+- **Core Release:** 3-mode window system (Mini Pill, Floating Card, Full-Height Rail), bidirectional outline parser, reading progress bar, heading search, and sidebar integration.
 
 ---
 
 <details>
-<summary>🇮🇷 <strong>راهنمای فارسی و گزارش تغییرات (Persian Documentation & Changelog)</strong></summary>
+<summary>🇮🇷 <strong>راهنمای فارسی و گزارش تغییرات (Persian Documentation)</strong></summary>
 
 ### افزونه هدایت‌گر هوشمند بخش‌های سند (BiDi Flow Navigator)
 
-**هدایت‌گر BiDi** یک افزونه پیشرفته و اختصاصی برای نرم‌افزار Obsidian است که فهرست بخش‌ها و سرتیترهای یادداشت‌های شما را شناسایی کرده و تجربه‌ای روان و شیک از ناوبری محتوا ارائه می‌دهد.
+**BiDi Flow Navigator** افزونه‌ای برای مدیریت و مرور ساختار سرتیترها در نرم‌افزار Obsidian است که با تمرکز بر متون دوجهته و راست‌به‌چپ (فارسی، عربی و ترکیب با انگلیسی) توسعه یافته است.
 
-#### قابلیت‌های برجسته:
-1. **پشتیبانی تراز اول از زبان فارسی و چینش راست‌به‌چپ (BiDi & RTL):** تنظیم خودکار جهت متن، مهار کلمات طولانی، و عدم به‌هم‌ریختگی چینش با اصطلاحات انگلیسی یا کدهای فنی.
-2. **نوار کلید ۵تایی متقارن و اسکرول خودکار یکپارچه (نسخه ۱.۲.۰):**
-   - نوار کلیدهای پرکاربرد شامل پرش به سرتیتر قبلی، بخش قبلی، اسکرول خودکار روان در مرکز، بخش بعدی، و سرتیتر بعدی.
-   - هماهنگی کامل کلیدهای اسکرول خودکار میان پنجره شناور و نوار کناری (Sidebar) به طوری که وضعیت شروع و توقف در هر دو پنجره همگام است.
-   - اسکرول روان ۶۰ فریم بر ثانیه با دقت زیرپیکسل در هر دو نمای مطالعه و ویرایش بدون توقف در سرعت‌های پایین (۱۰ تا ۲۰۰ پیکسل بر ثانیه).
-   - پرش هوشمند سرتیترها (رد شدن از زیرتیترها در H1 و H2 و پرش به سرتیتر والد در تیترهای عمیق).
-   - ظاهر تخت و بدون سایه برای پنجره شناور و آیکون شناور.
-3. **حافظه هوشمند آخرین سرتیتر و هماهنگی کامل تغییر مود:** ذخیره آخرین هدینگ مطالعه‌شده به ازای هر یادداشت و بازگشت خودکار به همان نقطه، همراه با هماهنگ‌سازی بی‌نقص موقعیت اسکرول میان حالت ویرایش (Live Preview) و مطالعه (Reading View) بدون بازگشت به ابتدای فایل.
-4. **سیستم پنجره ۳ حالته:** دکمه کوچک شناور (Pill)، پنجره شناور کارت (Floating)، و پنل تمام‌قد متصل به صفحه (Full-Height).
-5. **تم‌های رنگی متنوع:** تم‌های دراکولا، نورد، سولارایزد، گرووباکس و پیش‌فرض با حالت‌های مات (Solid) و شیشه‌ای (Transparent).
-6. **موتور اسکرول اسپای ۶۰ فریم:** تشخیص لحظه‌ای بخش فعال هنگام اسکرول با سرعت فوق‌العاده.
-7. **نوار پیشرفت مطالعه پیوسته:** محاسبه دقیق درصد خواندن یادداشت با ارقام فارسی یا انگلیسی.
-8. **فیلتر و جستجوی آنی در عناوین:** فیلتر سریع سرتیترها همراه با باز شدن خودکار شاخه‌ها.
-9. **قابلیت تغییر کامل زبان (فارسی / انگلیسی):** انتخاب زبان مستقل برای کل محیط افزونه و صفحه تنظیمات.
+#### ویژگی‌های کلیدی:
+1. **پشتیبانی اصولی از متون فارسی و دوجهته (RTL/LTR):** چینش طبیعی و منظم سرتیترها با رعایت قواعد متون دوزبانه، اصطلاحات فنی و اعداد.
+2. **نوار ناوبری ۵ دکمه و اسکرول خودکار هماهنگ (نسخه ۱.۲.۰):**
+   - دسترسی سریع به سرتیتر قبلی، بخش قبلی، اسکرول خودکار در مرکز، بخش بعدی، و سرتیتر بعدی.
+   - همگام‌سازی وضعیت اسکرول خودکار میان پنجره شناور و نوار کناری (Sidebar).
+   - اسکرول پیوسته و روان با دقت زیرپیکسل در هر دو نمای مطالعه و ویرایش با امکان تنظیم سرعت از ۱۰ تا ۲۰۰ پیکسل بر ثانیه.
+   - رفتار هوشمند پرش بین سرتیترها (رد شدن از زیربخش‌ها در H1/H2 و امکان هدایت به سرتیتر والد در تیترهای سطح ۳ به بالا).
+   - بهینه‌سازی اختصاصی برای گوشی: قرارگیری در ارتفاع مناسب (`88px`) برای عدم تداخل با منوهای بالای گوشی، ارتفاع کوتاه‌تر کارت و حذف دکمه تمام‌صفحه در موبایل.
+3. **حافظه موقعیت مطالعه و هماهنگی تغییر نما:** ذخیره سرتیتر فعال هر یادداشت و حفظ دقیق موقعیت هنگام جابه‌جایی میان نمای ویرایش (Live Preview) و نمای مطالعه (Reading View).
+4. **حالت‌های نمایش انعطاف‌پذیر:** حالت دکمه کوچک شناور (Pill)، کارت شناور (Floating) و پنل تمام‌قد (Full-Height).
+5. **تم‌ها و سبک‌های بصری:** تم‌های دراکولا، نورد، سولارایزد، گرووباکس و پیش‌فرض با حالت‌های مات و شیشه‌ای.
+6. **امکانات ساختاری:** نوار درصد پیشرفت مطالعه با ارقام فارسی، فیلتر آنی سرتیترها و نشانگر بخش فعال.
+7. **محیط کاملاً دوزبانه:** امکان انتخاب مستقل زبان فارسی یا انگلیسی برای تمامی بخش‌ها و تنظیمات افزونه.
 
 </details>
 
 ---
 
-## 🛠️ Development & Building
-
-To build the plugin from source:
-
-```bash
-# Clone the repository
-git clone https://github.com/mohamad-javad/BCN-bidi-content-nvigator-.git
-cd BCN-bidi-content-nvigator-
-
-# Install dependencies
-npm install
-
-# Start development mode with auto-rebuild
-npm run dev
-
-# Build production bundle
-npm run build
-```
-
----
-
-## 📄 License
+## License
 
 This project is licensed under the [MIT License](LICENSE).
-
----
-
-## 🤝 Contributing
-
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/mohamad-javad/BCN-bidi-content-nvigator-/issues).
