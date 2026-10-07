@@ -711,10 +711,12 @@ export class BidiFlowNavigatorCore extends Component {
       cleanups.push(() => cmScroller.removeEventListener('scroll', onScroll));
     }
 
-    const previewContainer = this.currentView.previewMode?.containerEl;
-    if (previewContainer) {
-      previewContainer.addEventListener('scroll', onScroll, { passive: true });
-      cleanups.push(() => previewContainer.removeEventListener('scroll', onScroll));
+    const previewEl = content?.querySelector<HTMLElement>('.markdown-preview-view')
+      ?? (this.currentView.previewMode as unknown as { containerEl?: HTMLElement })?.containerEl?.querySelector<HTMLElement>('.markdown-preview-view')
+      ?? this.currentView.previewMode?.containerEl;
+    if (previewEl) {
+      previewEl.addEventListener('scroll', onScroll, { passive: true });
+      cleanups.push(() => previewEl.removeEventListener('scroll', onScroll));
     }
 
     this.scrollCleanup = () => {
@@ -926,34 +928,16 @@ export class BidiFlowNavigatorCore extends Component {
     if (!this.currentView) return;
 
     let percent = 0;
-    const mode = this.currentView.getMode();
-
-    if (mode === 'preview') {
-      const container = this.currentView.previewMode?.containerEl;
-      if (container) {
-        const maxScroll = container.scrollHeight - container.clientHeight;
-        if (maxScroll > 10) {
-          if (container.scrollTop <= 5) {
-            percent = 0;
-          } else if (container.scrollTop + container.clientHeight >= container.scrollHeight - 10) {
-            percent = 100;
-          } else {
-            percent = Math.round((container.scrollTop / maxScroll) * 100);
-          }
-        }
-      }
-    } else {
-      const scroller = this.currentView.contentEl.querySelector<HTMLElement>('.cm-scroller');
-      if (scroller) {
-        const maxScroll = scroller.scrollHeight - scroller.clientHeight;
-        if (maxScroll > 10) {
-          if (scroller.scrollTop <= 5) {
-            percent = 0;
-          } else if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 15) {
-            percent = 100;
-          } else {
-            percent = Math.round((scroller.scrollTop / maxScroll) * 100);
-          }
+    const scrollContainer = this.getScrollContainer(this.currentView);
+    if (scrollContainer) {
+      const maxScroll = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+      if (maxScroll > 10) {
+        if (scrollContainer.scrollTop <= 5) {
+          percent = 0;
+        } else if (scrollContainer.scrollTop + scrollContainer.clientHeight >= scrollContainer.scrollHeight - 10) {
+          percent = 100;
+        } else {
+          percent = Math.round((scrollContainer.scrollTop / maxScroll) * 100);
         }
       }
     }
@@ -1036,13 +1020,9 @@ export class BidiFlowNavigatorCore extends Component {
   public getPageSizeInLines(): number {
     const view = this.getActiveMarkdownView();
     if (view) {
-      const scroller = view.contentEl.querySelector<HTMLElement>('.cm-scroller');
-      if (scroller && scroller.clientHeight > 100) {
-        return Math.max(12, Math.round((scroller.clientHeight / 24) * 0.85));
-      }
-      const preview = view.previewMode?.containerEl;
-      if (preview && preview.clientHeight > 100) {
-        return Math.max(12, Math.round((preview.clientHeight / 24) * 0.85));
+      const scrollContainer = this.getScrollContainer(view);
+      if (scrollContainer && scrollContainer.clientHeight > 100) {
+        return Math.max(12, Math.round((scrollContainer.clientHeight / 24) * 0.85));
       }
     }
     return 25;
@@ -1103,12 +1083,13 @@ export class BidiFlowNavigatorCore extends Component {
         // Ignore
       }
 
-      if (container) {
+      const scrollContainer = this.getScrollContainer(view);
+      if (scrollContainer) {
         const lineCount = view.file ? (this.rawHeadings.length > 0 ? Math.max(100, this.rawHeadings[this.rawHeadings.length - 1].position.end.line) : 100) : 100;
         const ratio = targetLine / Math.max(1, lineCount);
-        const maxScroll = container.scrollHeight - container.clientHeight;
-        const targetScrollTop = Math.min(maxScroll, Math.round(ratio * container.scrollHeight));
-        container.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
+        const maxScroll = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+        const targetScrollTop = Math.min(maxScroll, Math.round(ratio * scrollContainer.scrollHeight));
+        scrollContainer.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
       }
     } else {
       const subView = (view as unknown as { currentMode?: MarkdownSubView; editMode?: MarkdownSubView }).currentMode ??
@@ -1145,6 +1126,19 @@ export class BidiFlowNavigatorCore extends Component {
     }
   }
 
+  public getScrollContainer(view: MarkdownView | null): HTMLElement | null {
+    if (!view) return null;
+    if (view.getMode() === 'preview') {
+      const previewEl = view.contentEl.querySelector<HTMLElement>('.markdown-preview-view')
+        ?? (view.previewMode as unknown as { containerEl?: HTMLElement })?.containerEl?.querySelector<HTMLElement>('.markdown-preview-view')
+        ?? view.previewMode?.containerEl;
+      return previewEl ?? null;
+    } else {
+      const cmScroller = view.contentEl.querySelector<HTMLElement>('.cm-scroller');
+      return cmScroller ?? view.contentEl;
+    }
+  }
+
   public toggleAutoScroll(): void {
     if (this.isAutoScrolling) {
       this.stopAutoScroll();
@@ -1169,7 +1163,8 @@ export class BidiFlowNavigatorCore extends Component {
     }
     this.autoScrollLastTimestamp = performance.now();
 
-    let consecutiveStalledFrames = 0;
+    let atBottomFrames = 0;
+    let emptyDocFrames = 0;
 
     const step = (now: number) => {
       if (!this.isAutoScrolling) {
@@ -1182,42 +1177,45 @@ export class BidiFlowNavigatorCore extends Component {
         return;
       }
 
+      const scrollContainer = this.getScrollContainer(currentView);
+      if (!scrollContainer) {
+        this.autoScrollRafId = requestAnimationFrame(step);
+        return;
+      }
+
       const deltaMs = Math.min(100, Math.max(1, now - this.autoScrollLastTimestamp));
       this.autoScrollLastTimestamp = now;
 
       const speed = Math.max(5, this.settings.autoScrollSpeed || 30);
       const deltaPx = (speed * deltaMs) / 1000;
-      this.autoScrollAccumulator += deltaPx;
 
-      const pixelsToScroll = Math.floor(this.autoScrollAccumulator);
-      if (pixelsToScroll >= 1) {
-        this.autoScrollAccumulator -= pixelsToScroll;
+      const maxScroll = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
 
-        let scrollContainer: HTMLElement | null = null;
-        if (currentView.getMode() === 'preview') {
-          scrollContainer = currentView.previewMode?.containerEl
-            ?? currentView.contentEl.querySelector<HTMLElement>('.markdown-preview-view');
-        } else {
-          scrollContainer = currentView.contentEl.querySelector<HTMLElement>('.cm-scroller');
+      if (maxScroll <= 5) {
+        emptyDocFrames++;
+        if (emptyDocFrames > 60) {
+          this.stopAutoScroll();
+          return;
         }
+        this.autoScrollRafId = requestAnimationFrame(step);
+        return;
+      } else {
+        emptyDocFrames = 0;
+      }
 
-        if (scrollContainer) {
-          const maxScroll = scrollContainer.scrollHeight - scrollContainer.clientHeight;
-          if (maxScroll <= 5) {
-            this.stopAutoScroll();
-            return;
-          }
-
-          if (scrollContainer.scrollTop >= maxScroll - 3) {
-            consecutiveStalledFrames++;
-            if (consecutiveStalledFrames > 12) {
-              this.stopAutoScroll();
-              return;
-            }
-          } else {
-            consecutiveStalledFrames = 0;
-            scrollContainer.scrollTop += pixelsToScroll;
-          }
+      const isAtBottom = scrollContainer.scrollTop >= maxScroll - 3;
+      if (isAtBottom) {
+        atBottomFrames++;
+        if (atBottomFrames > 30) {
+          this.stopAutoScroll();
+          return;
+        }
+      } else {
+        atBottomFrames = 0;
+        try {
+          scrollContainer.scrollBy({ top: deltaPx, behavior: 'instant' });
+        } catch {
+          scrollContainer.scrollTop += deltaPx;
         }
       }
 

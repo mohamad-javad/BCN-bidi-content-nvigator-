@@ -182,7 +182,7 @@ export class BidiFlowSettingTab extends PluginSettingTab {
           type: 'slider',
           key: 'autoScrollSpeed',
           min: 10,
-          max: 120,
+          max: 200,
           step: 5,
         },
       },
@@ -513,8 +513,9 @@ export class BidiFlowSettingTab extends PluginSettingTab {
       .setDesc(tr.autoScrollSpeedDesc)
       .addSlider((slider) =>
         slider
-          .setLimits(10, 120, 5)
+          .setLimits(10, 200, 5)
           .setValue(this.plugin.settings.autoScrollSpeed)
+          .setDynamicTooltip()
           .onChange(async (val) => {
             this.plugin.settings.autoScrollSpeed = val;
             await this.plugin.saveSettings();
