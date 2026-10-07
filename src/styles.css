@@ -729,6 +729,37 @@
 }
 
 /* ==========================================================================
+   Mobile & Phone Responsive Positioning
+   ========================================================================== */
+
+.is-phone .bidi-floating-navigator.is-mode-mini,
+.is-mobile .bidi-floating-navigator.is-mode-mini {
+  top: 88px;
+}
+
+.is-phone .bidi-floating-navigator.is-mode-floating,
+.is-mobile .bidi-floating-navigator.is-mode-floating {
+  top: 88px;
+}
+
+.is-phone .bidi-floating-navigator.is-mode-floating .bidi-floating-card,
+.is-mobile .bidi-floating-navigator.is-mode-floating .bidi-floating-card {
+  max-height: calc(100vh - 180px);
+}
+
+@media (max-width: 768px) {
+  .bidi-floating-navigator.is-mode-mini {
+    top: 88px;
+  }
+  .bidi-floating-navigator.is-mode-floating {
+    top: 88px;
+  }
+  .bidi-floating-navigator.is-mode-floating .bidi-floating-card {
+    max-height: calc(100vh - 180px);
+  }
+}
+
+/* ==========================================================================
    Sidebar View Container
    ========================================================================== */
 
