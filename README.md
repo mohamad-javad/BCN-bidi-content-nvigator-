@@ -2,7 +2,7 @@
 
 [![Obsidian Plugin](https://img.shields.io/badge/Obsidian-Plugin-7C3AED?logo=obsidian&logoColor=white)](https://obsidian.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Latest Release](https://img.shields.io/badge/release-v1.2.0-emerald.svg)](https://github.com/mohamad-javad/BCN-bidi-content-nvigator-/releases)
+[![Latest Release](https://img.shields.io/badge/release-v1.2.1-emerald.svg)](https://github.com/mohamad-javad/BCN-bidi-content-nvigator-/releases)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
 **BiDi Flow Navigator** is a document outline and navigation plugin for [Obsidian](https://obsidian.md). Specifically built to handle **Bidirectional (BiDi) text (Persian, Arabic, and mixed RTL/LTR)**, it provides heading tracking, section jumping, reading progress calculation, position memory across mode switches, customizable themes, and synchronized auto-scrolling across devices.
@@ -136,6 +136,12 @@
 ---
 
 ## Changelog
+
+### v1.2.1
+- **Popout Window Compatibility:** Standardized all frame scheduling calls to `window.requestAnimationFrame()` and `window.cancelAnimationFrame()`.
+- **CSS Quality Standards:** Eliminated all `!important` declarations by enhancing selector specificity in mobile responsive rules.
+- **Mobile Comfort Height:** Adjusted mobile floating card maximum height to 420px for balanced outline visibility and note reading.
+- **Settings Deprecation Cleanups:** Removed deprecated `setDynamicTooltip()` on slider components.
 
 ### v1.2.0
 - **Unified Auto-Scroll:** Synchronized auto-scroll state across the floating window, sidebar view, and command palette.

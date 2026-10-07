@@ -1077,7 +1077,6 @@ export class BidiFlowNavigatorCore extends Component {
     const mode = view.getMode();
     if (mode === 'preview') {
       const preview = view.previewMode;
-      const container = preview?.containerEl;
 
       try {
         const previewRenderer = (preview as unknown as { renderer?: { applyScrollDelayed?: (line: number) => void; applyScroll?: (line: number) => boolean } })?.renderer;
@@ -1185,7 +1184,7 @@ export class BidiFlowNavigatorCore extends Component {
 
       const scrollContainer = this.getScrollContainer(currentView);
       if (!scrollContainer) {
-        this.autoScrollRafId = requestAnimationFrame(step);
+        this.autoScrollRafId = window.requestAnimationFrame(step);
         return;
       }
 
@@ -1203,7 +1202,7 @@ export class BidiFlowNavigatorCore extends Component {
           this.stopAutoScroll();
           return;
         }
-        this.autoScrollRafId = requestAnimationFrame(step);
+        this.autoScrollRafId = window.requestAnimationFrame(step);
         return;
       } else {
         emptyDocFrames = 0;
@@ -1226,18 +1225,18 @@ export class BidiFlowNavigatorCore extends Component {
         }
       }
 
-      this.autoScrollRafId = requestAnimationFrame(step);
+      this.autoScrollRafId = window.requestAnimationFrame(step);
     };
 
     if (this.autoScrollRafId !== null) {
-      cancelAnimationFrame(this.autoScrollRafId);
+      window.cancelAnimationFrame(this.autoScrollRafId);
     }
-    this.autoScrollRafId = requestAnimationFrame(step);
+    this.autoScrollRafId = window.requestAnimationFrame(step);
   }
 
   public stopAutoScroll(): void {
     if (this.autoScrollRafId !== null) {
-      cancelAnimationFrame(this.autoScrollRafId);
+      window.cancelAnimationFrame(this.autoScrollRafId);
       this.autoScrollRafId = null;
     }
     this.isAutoScrolling = false;

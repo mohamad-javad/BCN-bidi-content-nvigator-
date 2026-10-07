@@ -515,7 +515,6 @@ export class BidiFlowSettingTab extends PluginSettingTab {
         slider
           .setLimits(10, 200, 5)
           .setValue(this.plugin.settings.autoScrollSpeed)
-          .setDynamicTooltip()
           .onChange(async (val) => {
             this.plugin.settings.autoScrollSpeed = val;
             await this.plugin.saveSettings();
