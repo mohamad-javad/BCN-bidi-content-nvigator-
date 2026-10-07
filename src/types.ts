@@ -26,7 +26,7 @@ export const DEFAULT_SETTINGS: BidiFlowSettings = {
   indentStepPx: 12,
   showProgressBar: true,
   showSearch: true,
-  showLevelBadge: true,
+  showLevelBadge: false,
   accentGlow: true,
   persianNumerals: true,
   maxHeadingLevel: 6,
