@@ -29,6 +29,7 @@ export interface BidiFlowSettings {
   showPrevPartBtn: boolean;
   showNextSiblingBtn: boolean;
   showPrevSiblingBtn: boolean;
+  deepHeadingJumpTarget: 'parent' | 'sibling';
 }
 
 export interface SavedHeadingPosition {
@@ -62,6 +63,7 @@ export const DEFAULT_SETTINGS: BidiFlowSettings = {
   showPrevPartBtn: true,
   showNextSiblingBtn: true,
   showPrevSiblingBtn: true,
+  deepHeadingJumpTarget: 'parent',
 };
 
 export interface BidiHeadingNode {

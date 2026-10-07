@@ -226,6 +226,18 @@ export class BidiFlowSettingTab extends PluginSettingTab {
           key: 'showNextSiblingBtn',
         },
       },
+      {
+        name: tr.deepHeadingJumpName,
+        desc: tr.deepHeadingJumpDesc,
+        control: {
+          type: 'dropdown',
+          key: 'deepHeadingJumpTarget',
+          options: {
+            parent: tr.jumpTargetParent,
+            sibling: tr.jumpTargetSibling,
+          },
+        },
+      },
     ];
   }
 
@@ -575,6 +587,22 @@ export class BidiFlowSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.showNextSiblingBtn)
           .onChange(async (val) => {
             this.plugin.settings.showNextSiblingBtn = val;
+            await this.plugin.saveSettings();
+            this.plugin.refreshAllWidgets();
+          })
+      );
+
+    // Deep Heading Jump Target (H3+)
+    new Setting(containerEl)
+      .setName(tr.deepHeadingJumpName)
+      .setDesc(tr.deepHeadingJumpDesc)
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption('parent', tr.jumpTargetParent)
+          .addOption('sibling', tr.jumpTargetSibling)
+          .setValue(this.plugin.settings.deepHeadingJumpTarget || 'parent')
+          .onChange(async (val: string) => {
+            this.plugin.settings.deepHeadingJumpTarget = val as 'parent' | 'sibling';
             await this.plugin.saveSettings();
             this.plugin.refreshAllWidgets();
           })

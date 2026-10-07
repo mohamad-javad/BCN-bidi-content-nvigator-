@@ -1156,6 +1156,7 @@ export class BidiFlowNavigatorCore extends Component {
   public startAutoScroll(): void {
     const view = this.getActiveMarkdownView();
     if (!view) return;
+
     this.isAutoScrolling = true;
     this.autoScrollAccumulator = 0;
 
@@ -1167,6 +1168,8 @@ export class BidiFlowNavigatorCore extends Component {
       this.autoScrollBtnEl.setAttribute('aria-label', tr.autoScrollStop);
     }
     this.autoScrollLastTimestamp = performance.now();
+
+    let consecutiveStalledFrames = 0;
 
     const step = (now: number) => {
       if (!this.isAutoScrolling) {
@@ -1190,31 +1193,31 @@ export class BidiFlowNavigatorCore extends Component {
       if (pixelsToScroll >= 1) {
         this.autoScrollAccumulator -= pixelsToScroll;
 
-        let atBottom = false;
+        let scrollContainer: HTMLElement | null = null;
         if (currentView.getMode() === 'preview') {
-          const container = currentView.previewMode?.containerEl
+          scrollContainer = currentView.previewMode?.containerEl
             ?? currentView.contentEl.querySelector<HTMLElement>('.markdown-preview-view');
-          if (container) {
-            const prevTop = container.scrollTop;
-            container.scrollTop += pixelsToScroll;
-            if (container.scrollTop === prevTop && pixelsToScroll > 0) {
-              atBottom = true;
-            }
-          }
         } else {
-          const scroller = currentView.contentEl.querySelector<HTMLElement>('.cm-scroller');
-          if (scroller) {
-            const prevTop = scroller.scrollTop;
-            scroller.scrollTop += pixelsToScroll;
-            if (scroller.scrollTop === prevTop && pixelsToScroll > 0) {
-              atBottom = true;
-            }
-          }
+          scrollContainer = currentView.contentEl.querySelector<HTMLElement>('.cm-scroller');
         }
 
-        if (atBottom) {
-          this.stopAutoScroll();
-          return;
+        if (scrollContainer) {
+          const maxScroll = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+          if (maxScroll <= 5) {
+            this.stopAutoScroll();
+            return;
+          }
+
+          if (scrollContainer.scrollTop >= maxScroll - 3) {
+            consecutiveStalledFrames++;
+            if (consecutiveStalledFrames > 12) {
+              this.stopAutoScroll();
+              return;
+            }
+          } else {
+            consecutiveStalledFrames = 0;
+            scrollContainer.scrollTop += pixelsToScroll;
+          }
         }
       }
 
@@ -1315,20 +1318,33 @@ export class BidiFlowNavigatorCore extends Component {
     }
 
     const currLevel = this.activeHeading.level;
+    const mode = this.settings.deepHeadingJumpTarget || 'parent';
 
-    // If at level 1 or 2: advance to next heading directly
+    // 1. For H1 and H2: jump to next heading of level <= currLevel (next H1 or H2), skipping all H3, H4, etc.
     if (currLevel <= 2) {
-      if (currIdx + 1 < this.rawHeadings.length) {
-        this.jumpToSpecificHeading(this.rawHeadings[currIdx + 1]);
+      let target: HeadingCache | null = null;
+      for (let i = currIdx + 1; i < this.rawHeadings.length; i++) {
+        const h = this.rawHeadings[i];
+        if (h.level <= currLevel) {
+          target = h;
+          break;
+        }
+      }
+      if (target) {
+        this.jumpToSpecificHeading(target);
       }
       return;
     }
 
-    // If at level 3, 4, 5, 6: search forward for next sibling (same level) or parent section (level < currLevel)
+    // 2. For H3, H4, H5, H6:
+    // If mode is 'parent' (default): jump to the next parent heading (level < currLevel)
+    // If mode is 'sibling': jump to the next heading of level <= currLevel
     let target: HeadingCache | null = null;
+    const requiredLevelThreshold = (mode === 'parent') ? (currLevel - 1) : currLevel;
+
     for (let i = currIdx + 1; i < this.rawHeadings.length; i++) {
       const h = this.rawHeadings[i];
-      if (h.level <= currLevel) {
+      if (h.level <= requiredLevelThreshold) {
         target = h;
         break;
       }
@@ -1336,8 +1352,17 @@ export class BidiFlowNavigatorCore extends Component {
 
     if (target) {
       this.jumpToSpecificHeading(target);
-    } else if (currIdx + 1 < this.rawHeadings.length) {
-      this.jumpToSpecificHeading(this.rawHeadings[currIdx + 1]);
+    } else {
+      // Fallback: search for any heading with level <= currLevel
+      for (let i = currIdx + 1; i < this.rawHeadings.length; i++) {
+        if (this.rawHeadings[i].level <= currLevel) {
+          target = this.rawHeadings[i];
+          break;
+        }
+      }
+      if (target) {
+        this.jumpToSpecificHeading(target);
+      }
     }
   }
 
@@ -1357,18 +1382,31 @@ export class BidiFlowNavigatorCore extends Component {
     }
 
     const currLevel = this.activeHeading.level;
+    const mode = this.settings.deepHeadingJumpTarget || 'parent';
 
-    // If at level 1 or 2: go to previous heading directly
+    // 1. For H1 and H2: jump to previous heading of level <= currLevel (prev H1 or H2), skipping subheadings
     if (currLevel <= 2) {
-      this.jumpToSpecificHeading(this.rawHeadings[currIdx - 1]);
+      let target: HeadingCache | null = null;
+      for (let i = currIdx - 1; i >= 0; i--) {
+        const h = this.rawHeadings[i];
+        if (h.level <= currLevel) {
+          target = h;
+          break;
+        }
+      }
+      if (target) {
+        this.jumpToSpecificHeading(target);
+      }
       return;
     }
 
-    // If at level 3, 4, 5, 6: search backward for previous sibling (same level) or parent section (level < currLevel)
+    // 2. For H3, H4, H5, H6:
     let target: HeadingCache | null = null;
+    const requiredLevelThreshold = (mode === 'parent') ? (currLevel - 1) : currLevel;
+
     for (let i = currIdx - 1; i >= 0; i--) {
       const h = this.rawHeadings[i];
-      if (h.level <= currLevel) {
+      if (h.level <= requiredLevelThreshold) {
         target = h;
         break;
       }
@@ -1377,7 +1415,15 @@ export class BidiFlowNavigatorCore extends Component {
     if (target) {
       this.jumpToSpecificHeading(target);
     } else {
-      this.jumpToSpecificHeading(this.rawHeadings[currIdx - 1]);
+      for (let i = currIdx - 1; i >= 0; i--) {
+        if (this.rawHeadings[i].level <= currLevel) {
+          target = this.rawHeadings[i];
+          break;
+        }
+      }
+      if (target) {
+        this.jumpToSpecificHeading(target);
+      }
     }
   }
 
