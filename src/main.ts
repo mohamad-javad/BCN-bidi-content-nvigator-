@@ -3,7 +3,7 @@ import { BidiFlowSettings, DEFAULT_SETTINGS, SavedHeadingPosition } from './type
 import { BidiFlowSidebarView, BIDI_FLOW_VIEW_TYPE } from './BidiFlowSidebarView';
 import { BidiFlowFloatingWidget } from './BidiFlowFloatingWidget';
 import { BidiFlowSettingTab } from './settings';
-import { scrollToHeading } from './scrollSpy';
+import { scrollToHeading, scrollWithRetry } from './scrollSpy';
 import { cleanHeadingText } from './utils';
 import { t } from './i18n';
 
@@ -14,6 +14,8 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
   private restoredFilesForViews: WeakMap<MarkdownView, string> = new WeakMap();
   private restoringFiles: Set<string> = new Set();
   private debouncedSaveSettingsTimer: number | null = null;
+  private viewModeMap: WeakMap<MarkdownView, string> = new WeakMap();
+  private lastActiveHeadings: WeakMap<MarkdownView, HeadingCache> = new WeakMap();
 
   async onload() {
     await this.loadSettings();
@@ -27,6 +29,7 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
         new BidiFlowSidebarView(leaf, this.settings, (heading) => {
           const activeMd = this.app.workspace.getActiveViewOfType(MarkdownView);
           if (activeMd?.file) {
+            this.lastActiveHeadings.set(activeMd, heading);
             this.saveHeadingPosition(activeMd.file.path, heading);
           }
         })
@@ -118,12 +121,14 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
     this.registerEvent(
       this.app.workspace.on('layout-change', () => {
         this.syncFloatingWidgets();
+        this.handleModeSwitchForViews();
       })
     );
 
     this.registerEvent(
       this.app.workspace.on('active-leaf-change', () => {
         this.syncFloatingWidgets();
+        this.handleModeSwitchForViews();
       })
     );
 
@@ -138,13 +143,29 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
     );
 
     this.registerEvent(
+      this.app.metadataCache.on('resolved', () => {
+        for (const widget of this.floatingWidgets.values()) {
+          widget.refresh();
+        }
+      })
+    );
+
+    this.registerEvent(
       this.app.workspace.on('file-open', (file) => {
+        this.flushSaveSettings();
         if (file) {
+          this.syncFloatingWidgets();
           const view = this.app.workspace.getActiveViewOfType(MarkdownView);
           if (view && view.file?.path === file.path) {
-            void this.restoreHeadingForView(view, file);
+            void this.restoreHeadingForView(view, file, true);
           }
         }
+      })
+    );
+
+    this.registerEvent(
+      this.app.workspace.on('quit', () => {
+        this.flushSaveSettings();
       })
     );
 
@@ -153,7 +174,7 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
       this.syncFloatingWidgets();
       const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
       if (activeView?.file) {
-        void this.restoreHeadingForView(activeView, activeView.file);
+        void this.restoreHeadingForView(activeView, activeView.file, true);
       }
     });
   }
@@ -178,8 +199,14 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
       if (leaf.view instanceof MarkdownView) {
         const view = leaf.view;
         if (!this.floatingWidgets.has(view)) {
+          // Lock from saving line 0 during initial view creation
+          if (view.file && this.restoredFilesForViews.get(view) !== view.file.path) {
+            this.restoringFiles.add(view.file.path);
+          }
+
           const widget = new BidiFlowFloatingWidget(view, this.settings, (heading) => {
             if (view.file) {
+              this.lastActiveHeadings.set(view, heading);
               this.saveHeadingPosition(view.file.path, heading);
             }
           });
@@ -188,9 +215,63 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
         } else {
           this.floatingWidgets.get(view)?.refresh();
         }
+      }
+    }
+  }
 
-        if (view.file) {
-          void this.restoreHeadingForView(view, view.file);
+  private handleModeSwitchForViews(): void {
+    const leaves = this.app.workspace.getLeavesOfType('markdown');
+    for (const leaf of leaves) {
+      if (leaf.view instanceof MarkdownView) {
+        const view = leaf.view;
+        const file = view.file;
+        if (!file) continue;
+
+        const currentMode = view.getMode();
+        const prevMode = this.viewModeMap.get(view);
+
+        if (prevMode && prevMode !== currentMode) {
+          this.viewModeMap.set(view, currentMode);
+          const filePath = file.path;
+
+          // Lock position saving immediately so transient 0-scroll events during mode switch don't overwrite the heading!
+          this.restoringFiles.add(filePath);
+
+          const cache = this.app.metadataCache.getFileCache(file);
+          const headings = cache?.headings;
+          if (!headings || headings.length === 0) {
+            window.setTimeout(() => this.restoringFiles.delete(filePath), 400);
+            continue;
+          }
+
+          const lastActive = this.lastActiveHeadings.get(view);
+          const saved = this.settings.savedHeadingPositions?.[filePath];
+          const targetHeading = (lastActive && headings.some(h => h.heading === lastActive.heading && h.position.start.line === lastActive.position.start.line))
+            ? lastActive
+            : (saved ? this.findMatchingHeading(headings, saved) : headings[0]);
+
+          if (!targetHeading) {
+            window.setTimeout(() => this.restoringFiles.delete(filePath), 400);
+            continue;
+          }
+
+          scrollWithRetry(view, targetHeading, 'auto', () => {
+            const widget = this.floatingWidgets.get(view);
+            if (widget?.core) {
+              widget.core.setActiveHeadingManually(targetHeading);
+            }
+            const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
+            for (const sl of sidebarLeaves) {
+              if (sl.view instanceof BidiFlowSidebarView && sl.view.core) {
+                sl.view.core.setActiveHeadingManually(targetHeading);
+              }
+            }
+            window.setTimeout(() => {
+              this.restoringFiles.delete(filePath);
+            }, 350);
+          });
+        } else if (!prevMode) {
+          this.viewModeMap.set(view, currentMode);
         }
       }
     }
@@ -317,7 +398,16 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
       this.debouncedSaveSettingsTimer = null;
       this.pruneSavedHeadings();
       void this.saveSettings();
-    }, 1000);
+    }, 250);
+  }
+
+  public flushSaveSettings(): void {
+    if (this.debouncedSaveSettingsTimer !== null) {
+      window.clearTimeout(this.debouncedSaveSettingsTimer);
+      this.debouncedSaveSettingsTimer = null;
+    }
+    this.pruneSavedHeadings();
+    void this.saveSettings();
   }
 
   private pruneSavedHeadings(): void {
@@ -379,13 +469,18 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
     return null;
   }
 
-  public async restoreHeadingForView(view: MarkdownView, file: TFile): Promise<void> {
+  public async restoreHeadingForView(
+    view: MarkdownView,
+    file: TFile,
+    force = false
+  ): Promise<void> {
     if (!this.settings.rememberLastHeading) return;
-    if (this.restoredFilesForViews.get(view) === file.path) return;
+    if (!force && this.restoredFilesForViews.get(view) === file.path) return;
 
     const saved = this.settings.savedHeadingPositions?.[file.path];
     if (!saved) {
       this.restoredFilesForViews.set(view, file.path);
+      this.restoringFiles.delete(file.path);
       return;
     }
 
@@ -400,39 +495,45 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
 
       const cache = this.app.metadataCache.getFileCache(file);
       const headings = cache?.headings;
-      if (!headings || headings.length === 0) {
-        return false;
-      }
+      if (!headings || headings.length === 0) return false;
 
       const targetHeading = this.findMatchingHeading(headings, saved);
-      if (targetHeading) {
-        window.setTimeout(() => {
-          if (!view.containerEl.isConnected || view.file?.path !== file.path) {
-            this.restoringFiles.delete(file.path);
-            return;
-          }
-
-          scrollToHeading(view, targetHeading, 'smooth');
-
-          const widget = this.floatingWidgets.get(view);
-          if (widget?.core) {
-            widget.core.setActiveHeadingManually(targetHeading);
-          }
-
-          const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
-          for (const leaf of sidebarLeaves) {
-            if (leaf.view instanceof BidiFlowSidebarView && leaf.view.core) {
-              leaf.view.core.setActiveHeadingManually(targetHeading);
-            }
-          }
-
-          window.setTimeout(() => {
-            this.restoringFiles.delete(file.path);
-          }, 450);
-        }, 120);
-      } else {
+      if (!targetHeading) {
         this.restoringFiles.delete(file.path);
+        return true;
       }
+
+      if (view.getMode() !== 'preview') {
+        const editor = view.editor;
+        if (!editor || editor.lineCount() <= targetHeading.position.start.line) {
+          return false;
+        }
+      }
+
+      // Restore position cleanly
+      const ok = scrollToHeading(view, targetHeading, 'auto');
+      if (!ok) return false;
+
+      this.lastActiveHeadings.set(view, targetHeading);
+
+      // Update active heading in floating widget
+      const widget = this.floatingWidgets.get(view);
+      if (widget?.core) {
+        widget.core.setActiveHeadingManually(targetHeading);
+      }
+
+      // Update active heading in sidebar
+      const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
+      for (const leaf of sidebarLeaves) {
+        if (leaf.view instanceof BidiFlowSidebarView && leaf.view.core) {
+          leaf.view.core.setActiveHeadingManually(targetHeading);
+        }
+      }
+
+      window.setTimeout(() => {
+        this.restoringFiles.delete(file.path);
+      }, 300);
+
       return true;
     };
 
@@ -443,20 +544,17 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
     let attempts = 0;
     const interval = window.setInterval(() => {
       attempts++;
-      if (tryRestore() || attempts > 10) {
+      if (tryRestore() || attempts >= 30) {
         window.clearInterval(interval);
-        this.restoringFiles.delete(file.path);
+        if (attempts >= 30) {
+          this.restoringFiles.delete(file.path);
+        }
       }
-    }, 150);
+    }, 35);
   }
 
   onunload() {
-    if (this.debouncedSaveSettingsTimer !== null) {
-      window.clearTimeout(this.debouncedSaveSettingsTimer);
-      this.debouncedSaveSettingsTimer = null;
-    }
-    this.pruneSavedHeadings();
-    void this.saveSettings();
+    this.flushSaveSettings();
     this.destroyAllFloatingWidgets();
   }
 }

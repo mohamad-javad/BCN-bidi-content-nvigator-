@@ -211,7 +211,7 @@ export function getActiveHeadingInReadingView(
     return findLatestHeadingBeforeLine(headings, Math.floor(currentScrollLine + 2));
   }
 
-  return headings[0] ?? null;
+  return null;
 }
 
 /**
@@ -276,45 +276,44 @@ export function scrollToHeadingInSourceMode(
   view: MarkdownView,
   heading: HeadingCache,
   behavior: ScrollBehavior = 'smooth'
-): void {
-  const cm = getCodeMirrorView(view.editor);
+): boolean {
   const targetLine = heading.position.start.line;
+  const editor = view.editor;
+  if (!editor || editor.lineCount() <= targetLine) return false;
 
-  if (cm && cm.state?.doc && cm.scrollDOM) {
-    try {
-      const line1 = targetLine + 1;
-      const totalLines = cm.state.doc.lines;
-      const safeLine = Math.min(line1, totalLines);
-      const docLine = cm.state.doc.line(safeLine);
-      const block = cm.lineBlockAt ? cm.lineBlockAt(docLine.from) : null;
-
-      if (block) {
-        if (behavior === 'smooth') {
-          cm.scrollDOM.scrollTo({
-            top: Math.max(0, block.top - 20),
-            behavior: 'smooth'
-          });
-        } else {
-          cm.scrollDOM.scrollTop = Math.max(0, block.top - 20);
-        }
-        view.editor.setCursor({ line: targetLine, ch: 0 });
-        return;
-      }
-    } catch {
-      // Fallback
-    }
-  }
-
+  // 1. Position editor cursor
   try {
-    view.editor.scrollIntoView(
-      { from: { line: targetLine, ch: 0 }, to: { line: targetLine, ch: 0 } },
-      true
-    );
-    view.editor.setCursor({ line: targetLine, ch: 0 });
-    view.setEphemeralState({ line: targetLine });
+    editor.setCursor({ line: targetLine, ch: 0 });
   } catch {
     // Ignore
   }
+
+  // 2. Use Obsidian's native subView applyScroll to position heading at top
+  let scrolled = false;
+  try {
+    const subView = (view as unknown as { currentMode?: MarkdownSubView; editMode?: MarkdownSubView }).currentMode ??
+                    (view as unknown as { editMode?: MarkdownSubView }).editMode;
+    if (typeof subView?.applyScroll === 'function') {
+      subView.applyScroll(targetLine);
+      scrolled = true;
+    }
+  } catch {
+    // Ignore
+  }
+
+  // 3. Fallback: scrollIntoView without centering jump (center = false)
+  if (!scrolled) {
+    try {
+      editor.scrollIntoView(
+        { from: { line: targetLine, ch: 0 }, to: { line: targetLine, ch: 0 } },
+        false
+      );
+    } catch {
+      // Ignore
+    }
+  }
+
+  return true;
 }
 
 /**
@@ -324,10 +323,11 @@ export function scrollToHeadingInReadingView(
   view: MarkdownView,
   heading: HeadingCache,
   behavior: ScrollBehavior = 'smooth'
-): void {
+): boolean {
+  const targetLine = heading.position.start.line;
   const preview = view.previewMode;
   const container = preview?.containerEl;
-  if (!container) return;
+  if (!container) return false;
 
   const headingEls = Array.from(
     container.querySelectorAll<HTMLHeadingElement>('h1, h2, h3, h4, h5, h6')
@@ -346,14 +346,25 @@ export function scrollToHeadingInReadingView(
 
   if (targetEl) {
     targetEl.scrollIntoView({ behavior, block: 'start' });
-    return;
+    return true;
   }
 
-  view.setEphemeralState({ line: heading.position.start.line });
-  const previewScroll = preview as unknown as MarkdownPreviewViewWithScroll;
-  if (typeof previewScroll.applyScroll === 'function') {
-    previewScroll.applyScroll(heading.position.start.line);
+  // Ensure preview.applyScroll is also called for accurate virtual positioning
+  try {
+    const previewRenderer = (preview as unknown as { renderer?: { applyScrollDelayed?: (line: number) => void; applyScroll?: (line: number) => boolean } })?.renderer;
+    if (typeof previewRenderer?.applyScrollDelayed === 'function') {
+      previewRenderer.applyScrollDelayed(targetLine);
+    } else {
+      const previewScroll = preview as unknown as MarkdownPreviewViewWithScroll;
+      if (typeof previewScroll.applyScroll === 'function') {
+        previewScroll.applyScroll(targetLine);
+      }
+    }
+  } catch {
+    // Ignore
   }
+
+  return false;
 }
 
 /**
@@ -363,10 +374,43 @@ export function scrollToHeading(
   view: MarkdownView,
   heading: HeadingCache,
   behavior: ScrollBehavior = 'smooth'
-): void {
+): boolean {
   if (view.getMode() === 'preview') {
-    scrollToHeadingInReadingView(view, heading, behavior);
+    return scrollToHeadingInReadingView(view, heading, behavior);
   } else {
-    scrollToHeadingInSourceMode(view, heading, behavior);
+    return scrollToHeadingInSourceMode(view, heading, behavior);
   }
+}
+
+/**
+ * Retries scrolling to a target heading until rendered or attempts exhausted.
+ */
+export function scrollWithRetry(
+  view: MarkdownView,
+  heading: HeadingCache,
+  behavior: ScrollBehavior = 'auto',
+  onSuccess?: () => void
+): void {
+  let attempts = 0;
+  const tryScroll = (): boolean => {
+    if (!view.containerEl.isConnected) return true;
+    const ok = scrollToHeading(view, heading, behavior);
+    if (ok) {
+      onSuccess?.();
+      return true;
+    }
+    return false;
+  };
+
+  if (tryScroll()) return;
+
+  const interval = window.setInterval(() => {
+    attempts++;
+    if (tryScroll() || attempts >= 25) {
+      window.clearInterval(interval);
+      if (attempts >= 25) {
+        onSuccess?.();
+      }
+    }
+  }, 40);
 }

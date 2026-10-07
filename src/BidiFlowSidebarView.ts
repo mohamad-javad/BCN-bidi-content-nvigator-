@@ -55,6 +55,13 @@ export class BidiFlowSidebarView extends ItemView {
     // Set initial tab header tooltip according to current language
     this.updateTabHeader(t(this.settings.uiLanguage).viewTitle);
 
+    // Initial attachment to active markdown view if available
+    const initialMd = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (initialMd) {
+      this.currentMarkdownView = initialMd;
+      this.core.setView(initialMd);
+    }
+
     // 1. Listen to active leaf changes
     this.registerEvent(
       this.app.workspace.on('active-leaf-change', (leaf) => {
@@ -98,6 +105,14 @@ export class BidiFlowSidebarView extends ItemView {
     this.registerEvent(
       this.app.metadataCache.on('changed', (file) => {
         if (this.currentMarkdownView?.file?.path === file.path) {
+          this.core.refreshHeadings();
+        }
+      })
+    );
+
+    this.registerEvent(
+      this.app.metadataCache.on('resolved', () => {
+        if (this.currentMarkdownView) {
           this.core.refreshHeadings();
         }
       })

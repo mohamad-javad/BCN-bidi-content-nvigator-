@@ -54,6 +54,7 @@ export class BidiFlowNavigatorCore extends Component {
   private scrollCleanup: (() => void) | null = null;
   private rafId: number | null = null;
   private isUserInteractingWithTree = false;
+  private isProgrammaticTreeScroll = false;
   private userScrollTimeout: number | null = null;
   private onActiveHeadingChange?: (heading: HeadingCache) => void;
 
@@ -281,6 +282,7 @@ export class BidiFlowNavigatorCore extends Component {
     }, { passive: true });
     this.treeContainerEl.addEventListener('scroll', (e) => {
       e.stopPropagation();
+      if (this.isProgrammaticTreeScroll) return;
       this.isUserInteractingWithTree = true;
       if (this.userScrollTimeout !== null) {
         window.clearTimeout(this.userScrollTimeout);
@@ -288,7 +290,7 @@ export class BidiFlowNavigatorCore extends Component {
       this.userScrollTimeout = window.setTimeout(() => {
         this.isUserInteractingWithTree = false;
         this.userScrollTimeout = null;
-      }, 1000);
+      }, 800);
     }, { passive: true });
   }
 
@@ -473,7 +475,9 @@ export class BidiFlowNavigatorCore extends Component {
             this.calculateReadingProgress();
 
             scrollToHeading(this.currentView, node.heading, 'smooth');
-            this.currentView.editor.focus();
+            if (this.currentView.getMode() !== 'preview') {
+              this.currentView.editor?.focus();
+            }
           }
         });
 
@@ -577,7 +581,7 @@ export class BidiFlowNavigatorCore extends Component {
       if (this.rafId !== null) return;
       this.rafId = window.requestAnimationFrame(() => {
         this.rafId = null;
-        this.syncActiveHeading();
+        this.syncActiveHeading(e != null);
       });
     };
 
@@ -638,12 +642,12 @@ export class BidiFlowNavigatorCore extends Component {
     }
   }
 
-  private syncActiveHeading(): void {
+  private syncActiveHeading(notify = false): void {
     if (!this.currentView || this.rawHeadings.length === 0) return;
 
     const active = getActiveHeading(this.currentView, this.rawHeadings, 60);
     this.activeHeading = active;
-    if (active) {
+    if (active && notify) {
       this.onActiveHeadingChange?.(active);
     }
 
@@ -767,11 +771,15 @@ export class BidiFlowNavigatorCore extends Component {
     const containerRect = container.getBoundingClientRect();
     const elRect = el.getBoundingClientRect();
 
+    this.isProgrammaticTreeScroll = true;
     if (elRect.top < containerRect.top) {
       container.scrollTop -= (containerRect.top - elRect.top + 8);
     } else if (elRect.bottom > containerRect.bottom) {
       container.scrollTop += (elRect.bottom - containerRect.bottom + 8);
     }
+    window.requestAnimationFrame(() => {
+      this.isProgrammaticTreeScroll = false;
+    });
   }
 
   public setWindowControlHandlers(
@@ -899,7 +907,9 @@ export class BidiFlowNavigatorCore extends Component {
       this.calculateReadingProgress();
 
       scrollToHeading(this.currentView, target, 'smooth');
-      this.currentView.editor.focus();
+      if (this.currentView.getMode() !== 'preview') {
+        this.currentView.editor?.focus();
+      }
     }
   }
 
@@ -911,6 +921,10 @@ export class BidiFlowNavigatorCore extends Component {
     this.updateHeaderDisplay(surrounding);
     this.highlightActiveInTree();
     this.calculateReadingProgress();
+  }
+
+  public getActiveHeading(): HeadingCache | null {
+    return this.activeHeading;
   }
 
   public clear(): void {
