@@ -1,6 +1,7 @@
 import { Plugin, MarkdownView, WorkspaceLeaf, setTooltip, TFile, HeadingCache } from 'obsidian';
 import { BidiFlowSettings, DEFAULT_SETTINGS, SavedHeadingPosition } from './types';
 import { BidiFlowSidebarView, BIDI_FLOW_VIEW_TYPE } from './BidiFlowSidebarView';
+import { BidiFlowNavigatorCore } from './BidiFlowNavigatorCore';
 import { BidiFlowFloatingWidget } from './BidiFlowFloatingWidget';
 import { BidiFlowSettingTab } from './settings';
 import { scrollToHeading, scrollWithRetry } from './scrollSpy';
@@ -121,15 +122,19 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (view) {
           if (!checking) {
-            const widget = this.floatingWidgets.get(view);
-            if (widget?.core) {
-              widget.core.toggleAutoScroll();
+            if (BidiFlowNavigatorCore.isAnyAutoScrolling()) {
+              BidiFlowNavigatorCore.stopAllAutoScroll();
             } else {
-              const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
-              for (const sl of sidebarLeaves) {
-                if (sl.view instanceof BidiFlowSidebarView && sl.view.core) {
-                  sl.view.core.toggleAutoScroll();
-                  break;
+              const widget = this.floatingWidgets.get(view);
+              if (widget?.core) {
+                widget.core.startAutoScroll();
+              } else {
+                const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
+                for (const sl of sidebarLeaves) {
+                  if (sl.view instanceof BidiFlowSidebarView && sl.view.core) {
+                    sl.view.core.startAutoScroll();
+                    break;
+                  }
                 }
               }
             }

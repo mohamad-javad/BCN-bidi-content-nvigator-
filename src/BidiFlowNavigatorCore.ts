@@ -13,6 +13,9 @@ import { getActiveHeading, getSurroundingHeadings, scrollToHeading, getCodeMirro
 import { t } from './i18n';
 
 export class BidiFlowNavigatorCore extends Component {
+  private static activeInstances: Set<BidiFlowNavigatorCore> = new Set();
+  private static activeRunner: BidiFlowNavigatorCore | null = null;
+
   public containerEl: HTMLElement;
   private settings: BidiFlowSettings;
 
@@ -89,8 +92,12 @@ export class BidiFlowNavigatorCore extends Component {
   private currentWindowMode: NavigatorDisplayMode = 'floating';
 
   public onload(): void {
+    BidiFlowNavigatorCore.activeInstances.add(this);
     this.buildSkeleton();
     this.registerDomEvents();
+    if (BidiFlowNavigatorCore.activeRunner !== null) {
+      this.updateAutoScrollUi(true);
+    }
   }
 
   public updateSettings(newSettings: BidiFlowSettings): void {
@@ -1140,8 +1147,8 @@ export class BidiFlowNavigatorCore extends Component {
   }
 
   public toggleAutoScroll(): void {
-    if (this.isAutoScrolling) {
-      this.stopAutoScroll();
+    if (BidiFlowNavigatorCore.activeRunner !== null) {
+      BidiFlowNavigatorCore.activeRunner.stopAutoScroll();
     } else {
       this.startAutoScroll();
     }
@@ -1151,23 +1158,22 @@ export class BidiFlowNavigatorCore extends Component {
     const view = this.getActiveMarkdownView();
     if (!view) return;
 
+    if (BidiFlowNavigatorCore.activeRunner && BidiFlowNavigatorCore.activeRunner !== this) {
+      BidiFlowNavigatorCore.activeRunner.stopAutoScroll();
+    }
+
+    BidiFlowNavigatorCore.activeRunner = this;
     this.isAutoScrolling = true;
     this.autoScrollAccumulator = 0;
 
-    if (this.autoScrollBtnEl) {
-      this.autoScrollBtnEl.addClass('is-active');
-      setIcon(this.autoScrollBtnEl, 'pause');
-      const tr = t(this.settings.uiLanguage);
-      setTooltip(this.autoScrollBtnEl, tr.autoScrollStop);
-      this.autoScrollBtnEl.setAttribute('aria-label', tr.autoScrollStop);
-    }
+    BidiFlowNavigatorCore.broadcastAutoScrollState(true);
     this.autoScrollLastTimestamp = performance.now();
 
     let atBottomFrames = 0;
     let emptyDocFrames = 0;
 
     const step = (now: number) => {
-      if (!this.isAutoScrolling) {
+      if (!this.isAutoScrolling || BidiFlowNavigatorCore.activeRunner !== this) {
         return;
       }
 
@@ -1236,10 +1242,41 @@ export class BidiFlowNavigatorCore extends Component {
     }
     this.isAutoScrolling = false;
     this.autoScrollAccumulator = 0;
-    if (this.autoScrollBtnEl) {
+    if (BidiFlowNavigatorCore.activeRunner === this) {
+      BidiFlowNavigatorCore.activeRunner = null;
+    }
+
+    BidiFlowNavigatorCore.broadcastAutoScrollState(false);
+  }
+
+  public static broadcastAutoScrollState(isRunning: boolean): void {
+    for (const instance of BidiFlowNavigatorCore.activeInstances) {
+      instance.updateAutoScrollUi(isRunning);
+    }
+  }
+
+  public static isAnyAutoScrolling(): boolean {
+    return BidiFlowNavigatorCore.activeRunner !== null;
+  }
+
+  public static stopAllAutoScroll(): void {
+    if (BidiFlowNavigatorCore.activeRunner) {
+      BidiFlowNavigatorCore.activeRunner.stopAutoScroll();
+    }
+  }
+
+  public updateAutoScrollUi(isRunning: boolean): void {
+    this.isAutoScrolling = isRunning;
+    if (!this.autoScrollBtnEl) return;
+    const tr = t(this.settings.uiLanguage);
+    if (isRunning) {
+      this.autoScrollBtnEl.addClass('is-active');
+      setIcon(this.autoScrollBtnEl, 'pause');
+      setTooltip(this.autoScrollBtnEl, tr.autoScrollStop);
+      this.autoScrollBtnEl.setAttribute('aria-label', tr.autoScrollStop);
+    } else {
       this.autoScrollBtnEl.removeClass('is-active');
       setIcon(this.autoScrollBtnEl, 'play');
-      const tr = t(this.settings.uiLanguage);
       setTooltip(this.autoScrollBtnEl, tr.autoScrollStart);
       this.autoScrollBtnEl.setAttribute('aria-label', tr.autoScrollStart);
     }
@@ -1454,6 +1491,10 @@ export class BidiFlowNavigatorCore extends Component {
   }
 
   public onunload(): void {
+    BidiFlowNavigatorCore.activeInstances.delete(this);
+    if (BidiFlowNavigatorCore.activeRunner === this) {
+      this.stopAutoScroll();
+    }
     this.detachScrollListener();
     this.clear();
   }
