@@ -12,6 +12,10 @@ export class BidiFlowSettingTab extends PluginSettingTab {
   }
 
   public display(): void {
+    this.renderSettings();
+  }
+
+  private renderSettings(): void {
     const { containerEl } = this;
     containerEl.empty();
 
@@ -32,7 +36,7 @@ export class BidiFlowSettingTab extends PluginSettingTab {
             this.plugin.settings.uiLanguage = val as 'fa' | 'en';
             await this.plugin.saveSettings();
             this.plugin.refreshAllWidgets();
-            this.display();
+            this.renderSettings();
           })
       );
 

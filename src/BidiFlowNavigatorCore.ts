@@ -9,7 +9,7 @@ import {
 } from 'obsidian';
 import { BidiHeadingNode, BidiFlowSettings, SectionNavigationDirection, SurroundingHeadings, NavigatorDisplayMode } from './types';
 import { cleanHeadingText, toPersianDigits, isRtlText } from './utils';
-import { getActiveHeading, getSurroundingHeadings, scrollToHeading, getCodeMirrorView } from './scrollSpy';
+import { getActiveHeading, getSurroundingHeadings, scrollToHeading } from './scrollSpy';
 import { t } from './i18n';
 
 export class BidiFlowNavigatorCore extends Component {
