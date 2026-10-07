@@ -192,6 +192,58 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
       },
     });
 
+    this.addCommand({
+      id: 'jump-to-prev-part',
+      name: tr.cmdPrevPart,
+      checkCallback: (checking: boolean) => {
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (view) {
+          if (!checking) {
+            const widget = this.floatingWidgets.get(view);
+            if (widget?.core) {
+              widget.core.jumpPrevPart();
+            } else {
+              const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
+              for (const sl of sidebarLeaves) {
+                if (sl.view instanceof BidiFlowSidebarView && sl.view.core) {
+                  sl.view.core.jumpPrevPart();
+                  break;
+                }
+              }
+            }
+          }
+          return true;
+        }
+        return false;
+      },
+    });
+
+    this.addCommand({
+      id: 'jump-to-prev-sibling',
+      name: tr.cmdPrevSibling,
+      checkCallback: (checking: boolean) => {
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (view) {
+          if (!checking) {
+            const widget = this.floatingWidgets.get(view);
+            if (widget?.core) {
+              widget.core.jumpPrevSibling();
+            } else {
+              const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
+              for (const sl of sidebarLeaves) {
+                if (sl.view instanceof BidiFlowSidebarView && sl.view.core) {
+                  sl.view.core.jumpPrevSibling();
+                  break;
+                }
+              }
+            }
+          }
+          return true;
+        }
+        return false;
+      },
+    });
+
     // 4. Register Settings Tab
     this.addSettingTab(new BidiFlowSettingTab(this.app, this));
 

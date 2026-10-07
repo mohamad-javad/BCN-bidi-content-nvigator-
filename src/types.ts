@@ -26,7 +26,9 @@ export interface BidiFlowSettings {
   autoScrollSpeed: number;
   showAutoScrollBtn: boolean;
   showNextPartBtn: boolean;
+  showPrevPartBtn: boolean;
   showNextSiblingBtn: boolean;
+  showPrevSiblingBtn: boolean;
 }
 
 export interface SavedHeadingPosition {
@@ -57,7 +59,9 @@ export const DEFAULT_SETTINGS: BidiFlowSettings = {
   autoScrollSpeed: 30,
   showAutoScrollBtn: true,
   showNextPartBtn: true,
+  showPrevPartBtn: true,
   showNextSiblingBtn: true,
+  showPrevSiblingBtn: true,
 };
 
 export interface BidiHeadingNode {

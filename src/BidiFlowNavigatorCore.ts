@@ -9,7 +9,7 @@ import {
 } from 'obsidian';
 import { BidiHeadingNode, BidiFlowSettings, SectionNavigationDirection, SurroundingHeadings, NavigatorDisplayMode } from './types';
 import { cleanHeadingText, toPersianDigits, isRtlText, detectDocumentDirection } from './utils';
-import { getActiveHeading, getSurroundingHeadings, scrollToHeading, getCodeMirrorView } from './scrollSpy';
+import { getActiveHeading, getSurroundingHeadings, scrollToHeading, getCodeMirrorView, MarkdownPreviewViewWithScroll } from './scrollSpy';
 import { t } from './i18n';
 
 export class BidiFlowNavigatorCore extends Component {
@@ -42,8 +42,10 @@ export class BidiFlowNavigatorCore extends Component {
   private treeContainerEl!: HTMLElement;
   private emptyStateEl!: HTMLElement;
 
-  // Bottom Toolbar Elements
+  // Bottom Toolbar Elements (5 Buttons: Prev Sibling, Prev Part, Auto Scroll, Next Part, Next Sibling)
   private bottomToolbarEl!: HTMLElement;
+  private prevSiblingBtnEl!: HTMLButtonElement;
+  private prevPartBtnEl!: HTMLButtonElement;
   private autoScrollBtnEl!: HTMLButtonElement;
   private nextPartBtnEl!: HTMLButtonElement;
   private nextSiblingBtnEl!: HTMLButtonElement;
@@ -52,6 +54,7 @@ export class BidiFlowNavigatorCore extends Component {
   private isAutoScrolling = false;
   private autoScrollRafId: number | null = null;
   private autoScrollLastTimestamp = 0;
+  private autoScrollAccumulator = 0;
 
   // Data & State
   private rawHeadings: HeadingCache[] = [];
@@ -107,6 +110,12 @@ export class BidiFlowNavigatorCore extends Component {
     }
     if (this.bottomToolbarEl) {
       this.bottomToolbarEl.toggleVisibility(this.settings.showBottomToolbar);
+    }
+    if (this.prevSiblingBtnEl) {
+      this.prevSiblingBtnEl.toggleVisibility(this.settings.showPrevSiblingBtn);
+    }
+    if (this.prevPartBtnEl) {
+      this.prevPartBtnEl.toggleVisibility(this.settings.showPrevPartBtn);
     }
     if (this.autoScrollBtnEl) {
       this.autoScrollBtnEl.toggleVisibility(this.settings.showAutoScrollBtn);
@@ -268,13 +277,35 @@ export class BidiFlowNavigatorCore extends Component {
     });
     this.emptyStateEl.hide();
 
-    // 5. Bottom Action Toolbar
+    // 5. Bottom Action Toolbar (5 Buttons: Prev Sibling, Prev Part, Auto Scroll in Center, Next Part, Next Sibling)
     this.bottomToolbarEl = this.containerEl.createDiv({ cls: 'bidi-flow-bottom-toolbar' });
     if (!this.settings.showBottomToolbar) {
       this.bottomToolbarEl.hide();
     }
 
-    // Auto Scroll Button
+    // 1) Prev Sibling Button
+    this.prevSiblingBtnEl = this.bottomToolbarEl.createEl('button', {
+      cls: 'clickable-icon bidi-flow-btn bidi-flow-toolbar-btn bidi-flow-prev-sibling-btn',
+      attr: { 'aria-label': tr.prevSibling }
+    });
+    setIcon(this.prevSiblingBtnEl, 'skip-back');
+    setTooltip(this.prevSiblingBtnEl, tr.prevSibling);
+    if (!this.settings.showPrevSiblingBtn) {
+      this.prevSiblingBtnEl.hide();
+    }
+
+    // 2) Prev Part Button
+    this.prevPartBtnEl = this.bottomToolbarEl.createEl('button', {
+      cls: 'clickable-icon bidi-flow-btn bidi-flow-toolbar-btn bidi-flow-prev-part-btn',
+      attr: { 'aria-label': tr.prevPart }
+    });
+    setIcon(this.prevPartBtnEl, 'chevron-up');
+    setTooltip(this.prevPartBtnEl, tr.prevPart);
+    if (!this.settings.showPrevPartBtn) {
+      this.prevPartBtnEl.hide();
+    }
+
+    // 3) Auto Scroll Button (CENTER!)
     this.autoScrollBtnEl = this.bottomToolbarEl.createEl('button', {
       cls: 'clickable-icon bidi-flow-btn bidi-flow-toolbar-btn bidi-flow-auto-scroll-btn',
       attr: { 'aria-label': tr.autoScrollStart }
@@ -285,23 +316,23 @@ export class BidiFlowNavigatorCore extends Component {
       this.autoScrollBtnEl.hide();
     }
 
-    // Next Part Button (Smart Page / Heading Jump)
+    // 4) Next Part Button (Smart Page / Heading Jump)
     this.nextPartBtnEl = this.bottomToolbarEl.createEl('button', {
       cls: 'clickable-icon bidi-flow-btn bidi-flow-toolbar-btn bidi-flow-next-part-btn',
       attr: { 'aria-label': tr.nextPart }
     });
-    setIcon(this.nextPartBtnEl, 'chevrons-down');
+    setIcon(this.nextPartBtnEl, 'chevron-down');
     setTooltip(this.nextPartBtnEl, tr.nextPart);
     if (!this.settings.showNextPartBtn) {
       this.nextPartBtnEl.hide();
     }
 
-    // Next Sibling / Parent Button
+    // 5) Next Sibling Button
     this.nextSiblingBtnEl = this.bottomToolbarEl.createEl('button', {
       cls: 'clickable-icon bidi-flow-btn bidi-flow-toolbar-btn bidi-flow-next-sibling-btn',
       attr: { 'aria-label': tr.nextSibling }
     });
-    setIcon(this.nextSiblingBtnEl, 'list-tree');
+    setIcon(this.nextSiblingBtnEl, 'skip-forward');
     setTooltip(this.nextSiblingBtnEl, tr.nextSibling);
     if (!this.settings.showNextSiblingBtn) {
       this.nextSiblingBtnEl.hide();
@@ -313,7 +344,15 @@ export class BidiFlowNavigatorCore extends Component {
     this.prevBtnEl.addEventListener('click', () => this.jumpSection('prev'));
     this.nextBtnEl.addEventListener('click', () => this.jumpSection('next'));
 
-    // Toolbar actions
+    // Toolbar actions (5 Buttons)
+    this.prevSiblingBtnEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.jumpPrevSibling();
+    });
+    this.prevPartBtnEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.jumpPrevPart();
+    });
     this.autoScrollBtnEl.addEventListener('click', (e) => {
       e.stopPropagation();
       this.toggleAutoScroll();
@@ -689,7 +728,6 @@ export class BidiFlowNavigatorCore extends Component {
   }
 
   private detachScrollListener(): void {
-    this.stopAutoScroll();
     if (this.rafId !== null) {
       window.cancelAnimationFrame(this.rafId);
       this.rafId = null;
@@ -982,6 +1020,131 @@ export class BidiFlowNavigatorCore extends Component {
     }
   }
 
+  public getActiveMarkdownView(): MarkdownView | null {
+    if (this.currentView && this.currentView.containerEl.isConnected) {
+      return this.currentView;
+    }
+    const app = (this.containerEl.ownerDocument?.defaultView as unknown as { app?: { workspace?: { getActiveViewOfType: (type: typeof MarkdownView) => MarkdownView | null } } })?.app;
+    const active = app?.workspace?.getActiveViewOfType(MarkdownView);
+    if (active && active.containerEl.isConnected) {
+      this.currentView = active;
+      return active;
+    }
+    return this.currentView;
+  }
+
+  public getPageSizeInLines(): number {
+    const view = this.getActiveMarkdownView();
+    if (view) {
+      const scroller = view.contentEl.querySelector<HTMLElement>('.cm-scroller');
+      if (scroller && scroller.clientHeight > 100) {
+        return Math.max(12, Math.round((scroller.clientHeight / 24) * 0.85));
+      }
+      const preview = view.previewMode?.containerEl;
+      if (preview && preview.clientHeight > 100) {
+        return Math.max(12, Math.round((preview.clientHeight / 24) * 0.85));
+      }
+    }
+    return 25;
+  }
+
+  public getCurrentScrollLine(): number {
+    const view = this.getActiveMarkdownView();
+    if (!view) return this.activeHeading ? this.activeHeading.position.start.line : 0;
+
+    const subView = (view as unknown as { currentMode?: MarkdownSubView; editMode?: MarkdownSubView }).currentMode ??
+                    (view as unknown as { editMode?: MarkdownSubView }).editMode;
+
+    if (typeof subView?.getScroll === 'function') {
+      try {
+        const line = subView.getScroll();
+        if (typeof line === 'number' && !isNaN(line)) {
+          return line;
+        }
+      } catch {
+        // Ignore
+      }
+    }
+
+    if (this.activeHeading) {
+      return this.activeHeading.position.start.line;
+    }
+
+    const editor = view.editor;
+    if (editor) {
+      try {
+        return editor.getCursor().line;
+      } catch {
+        // Ignore
+      }
+    }
+
+    return 0;
+  }
+
+  public scrollToLine(targetLine: number): void {
+    const view = this.getActiveMarkdownView();
+    if (!view) return;
+    this.stopAutoScroll();
+
+    const mode = view.getMode();
+    if (mode === 'preview') {
+      const preview = view.previewMode;
+      const container = preview?.containerEl;
+
+      try {
+        const previewRenderer = (preview as unknown as { renderer?: { applyScrollDelayed?: (line: number) => void; applyScroll?: (line: number) => boolean } })?.renderer;
+        if (typeof previewRenderer?.applyScrollDelayed === 'function') {
+          previewRenderer.applyScrollDelayed(targetLine);
+        } else if (typeof (preview as unknown as MarkdownPreviewViewWithScroll)?.applyScroll === 'function') {
+          (preview as unknown as MarkdownPreviewViewWithScroll).applyScroll!(targetLine);
+        }
+      } catch {
+        // Ignore
+      }
+
+      if (container) {
+        const lineCount = view.file ? (this.rawHeadings.length > 0 ? Math.max(100, this.rawHeadings[this.rawHeadings.length - 1].position.end.line) : 100) : 100;
+        const ratio = targetLine / Math.max(1, lineCount);
+        const maxScroll = container.scrollHeight - container.clientHeight;
+        const targetScrollTop = Math.min(maxScroll, Math.round(ratio * container.scrollHeight));
+        container.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
+      }
+    } else {
+      const subView = (view as unknown as { currentMode?: MarkdownSubView; editMode?: MarkdownSubView }).currentMode ??
+                      (view as unknown as { editMode?: MarkdownSubView }).editMode;
+
+      if (typeof subView?.applyScroll === 'function') {
+        subView.applyScroll(targetLine);
+      }
+
+      const editor = view.editor;
+      if (editor) {
+        try {
+          editor.scrollIntoView(
+            { from: { line: targetLine, ch: 0 }, to: { line: targetLine, ch: 0 } },
+            false
+          );
+        } catch {
+          // Ignore
+        }
+      }
+
+      const scroller = view.contentEl.querySelector<HTMLElement>('.cm-scroller');
+      if (scroller && editor) {
+        const cm = getCodeMirrorView(editor);
+        if (cm?.state?.doc) {
+          const line1 = Math.min(cm.state.doc.lines, Math.max(1, targetLine + 1));
+          const linePos = cm.state.doc.line(line1).from;
+          const block = cm.lineBlockAt ? cm.lineBlockAt(linePos) : null;
+          if (block) {
+            scroller.scrollTo({ top: block.top, behavior: 'smooth' });
+          }
+        }
+      }
+    }
+  }
+
   public toggleAutoScroll(): void {
     if (this.isAutoScrolling) {
       this.stopAutoScroll();
@@ -991,8 +1154,11 @@ export class BidiFlowNavigatorCore extends Component {
   }
 
   public startAutoScroll(): void {
-    if (!this.currentView) return;
+    const view = this.getActiveMarkdownView();
+    if (!view) return;
     this.isAutoScrolling = true;
+    this.autoScrollAccumulator = 0;
+
     if (this.autoScrollBtnEl) {
       this.autoScrollBtnEl.addClass('is-active');
       setIcon(this.autoScrollBtnEl, 'pause');
@@ -1003,44 +1169,53 @@ export class BidiFlowNavigatorCore extends Component {
     this.autoScrollLastTimestamp = performance.now();
 
     const step = (now: number) => {
-      if (!this.isAutoScrolling || !this.currentView) {
+      if (!this.isAutoScrolling) {
+        return;
+      }
+
+      const currentView = this.getActiveMarkdownView();
+      if (!currentView) {
         this.stopAutoScroll();
         return;
       }
+
       const deltaMs = Math.min(100, Math.max(1, now - this.autoScrollLastTimestamp));
       this.autoScrollLastTimestamp = now;
 
       const speed = Math.max(5, this.settings.autoScrollSpeed || 30);
       const deltaPx = (speed * deltaMs) / 1000;
+      this.autoScrollAccumulator += deltaPx;
 
-      let atBottom = false;
-      if (this.currentView.getMode() === 'preview') {
-        const container = this.currentView.previewMode?.containerEl;
-        if (container) {
-          const maxScroll = container.scrollHeight - container.clientHeight;
-          if (container.scrollTop + deltaPx >= maxScroll - 3) {
-            container.scrollTop = maxScroll;
-            atBottom = true;
-          } else {
-            container.scrollTop += deltaPx;
+      const pixelsToScroll = Math.floor(this.autoScrollAccumulator);
+      if (pixelsToScroll >= 1) {
+        this.autoScrollAccumulator -= pixelsToScroll;
+
+        let atBottom = false;
+        if (currentView.getMode() === 'preview') {
+          const container = currentView.previewMode?.containerEl
+            ?? currentView.contentEl.querySelector<HTMLElement>('.markdown-preview-view');
+          if (container) {
+            const prevTop = container.scrollTop;
+            container.scrollTop += pixelsToScroll;
+            if (container.scrollTop === prevTop && pixelsToScroll > 0) {
+              atBottom = true;
+            }
+          }
+        } else {
+          const scroller = currentView.contentEl.querySelector<HTMLElement>('.cm-scroller');
+          if (scroller) {
+            const prevTop = scroller.scrollTop;
+            scroller.scrollTop += pixelsToScroll;
+            if (scroller.scrollTop === prevTop && pixelsToScroll > 0) {
+              atBottom = true;
+            }
           }
         }
-      } else {
-        const scroller = this.currentView.contentEl.querySelector<HTMLElement>('.cm-scroller');
-        if (scroller) {
-          const maxScroll = scroller.scrollHeight - scroller.clientHeight;
-          if (scroller.scrollTop + deltaPx >= maxScroll - 3) {
-            scroller.scrollTop = maxScroll;
-            atBottom = true;
-          } else {
-            scroller.scrollTop += deltaPx;
-          }
-        }
-      }
 
-      if (atBottom) {
-        this.stopAutoScroll();
-        return;
+        if (atBottom) {
+          this.stopAutoScroll();
+          return;
+        }
       }
 
       this.autoScrollRafId = requestAnimationFrame(step);
@@ -1058,6 +1233,7 @@ export class BidiFlowNavigatorCore extends Component {
       this.autoScrollRafId = null;
     }
     this.isAutoScrolling = false;
+    this.autoScrollAccumulator = 0;
     if (this.autoScrollBtnEl) {
       this.autoScrollBtnEl.removeClass('is-active');
       setIcon(this.autoScrollBtnEl, 'play');
@@ -1068,120 +1244,63 @@ export class BidiFlowNavigatorCore extends Component {
   }
 
   public jumpNextPart(): void {
-    if (!this.currentView) return;
+    const view = this.getActiveMarkdownView();
+    if (!view) return;
     this.stopAutoScroll();
 
-    if (this.rawHeadings.length === 0) {
-      this.scrollPageDown();
-      return;
-    }
+    const currentLine = this.getCurrentScrollLine();
+    const pageSize = this.getPageSizeInLines();
+    const totalLines = view.editor ? view.editor.lineCount() : 1000;
 
     const surrounding = getSurroundingHeadings(this.rawHeadings, this.activeHeading);
     const nextHeading = surrounding.next;
 
-    if (!nextHeading) {
-      this.scrollPageDown();
-      return;
-    }
+    if (nextHeading) {
+      const headingLine = nextHeading.position.start.line;
+      const lineDist = headingLine - currentLine;
 
-    const mode = this.currentView.getMode();
-    if (mode === 'preview') {
-      const container = this.currentView.previewMode?.containerEl;
-      if (!container) return;
-      const viewportHeight = container.clientHeight;
-
-      const headingEls = Array.from(
-        container.querySelectorAll<HTMLHeadingElement>('h1, h2, h3, h4, h5, h6')
-      );
-      const cleanTarget = cleanHeadingText(nextHeading.heading);
-      const targetEl = headingEls.find(el => {
-        const dataH = el.getAttribute('data-heading');
-        const textH = el.textContent?.trim();
-        return (
-          dataH === nextHeading.heading ||
-          textH === nextHeading.heading.trim() ||
-          (dataH && cleanHeadingText(dataH) === cleanTarget) ||
-          (textH && cleanHeadingText(textH) === cleanTarget)
-        );
-      });
-
-      if (targetEl) {
-        const containerRect = container.getBoundingClientRect();
-        const targetRect = targetEl.getBoundingClientRect();
-        const distancePx = targetRect.top - containerRect.top;
-
-        if (distancePx > viewportHeight * 0.9) {
-          container.scrollBy({ top: Math.round(viewportHeight * 0.85), behavior: 'smooth' });
-        } else {
-          this.jumpToSpecificHeading(nextHeading);
-        }
+      if (lineDist > pageSize) {
+        const targetLine = Math.min(totalLines - 1, Math.round(currentLine + pageSize));
+        this.scrollToLine(targetLine);
       } else {
-        container.scrollBy({ top: Math.round(viewportHeight * 0.85), behavior: 'smooth' });
+        this.jumpToSpecificHeading(nextHeading);
       }
     } else {
-      // Live Preview / Edit Mode
-      const scroller = this.currentView.contentEl.querySelector<HTMLElement>('.cm-scroller');
-      if (!scroller) return;
-      const viewportHeight = scroller.clientHeight;
-      const currentScrollTop = scroller.scrollTop;
-
-      let headingPixelTop: number | null = null;
-      const editor = this.currentView.editor;
-      if (editor) {
-        const cm = getCodeMirrorView(editor);
-        if (cm?.state?.doc) {
-          const targetLine1 = nextHeading.position.start.line + 1;
-          if (targetLine1 <= cm.state.doc.lines) {
-            const lineFrom = cm.state.doc.line(targetLine1).from;
-            const block = cm.lineBlockAt ? cm.lineBlockAt(lineFrom) : null;
-            if (block) {
-              headingPixelTop = block.top;
-            }
-          }
-        }
-      }
-
-      if (headingPixelTop !== null) {
-        const distancePx = headingPixelTop - currentScrollTop;
-        if (distancePx > viewportHeight * 0.9) {
-          scroller.scrollBy({ top: Math.round(viewportHeight * 0.85), behavior: 'smooth' });
-        } else {
-          this.jumpToSpecificHeading(nextHeading);
-        }
-      } else {
-        const currentLine = typeof (this.currentView as unknown as { currentMode?: MarkdownSubView })?.currentMode?.getScroll === 'function'
-          ? (this.currentView as unknown as { currentMode?: MarkdownSubView }).currentMode!.getScroll()
-          : (this.activeHeading ? this.activeHeading.position.start.line : 0);
-        const targetLine = nextHeading.position.start.line;
-        const linesDifference = targetLine - currentLine;
-        if (linesDifference * 24 > viewportHeight * 0.9) {
-          scroller.scrollBy({ top: Math.round(viewportHeight * 0.85), behavior: 'smooth' });
-        } else {
-          this.jumpToSpecificHeading(nextHeading);
-        }
-      }
+      const targetLine = Math.min(totalLines - 1, Math.round(currentLine + pageSize));
+      this.scrollToLine(targetLine);
     }
   }
 
-  private scrollPageDown(): void {
-    if (!this.currentView) return;
-    if (this.currentView.getMode() === 'preview') {
-      const container = this.currentView.previewMode?.containerEl;
-      if (container) {
-        const scrollStep = Math.round(container.clientHeight * 0.85);
-        container.scrollBy({ top: scrollStep, behavior: 'smooth' });
+  public jumpPrevPart(): void {
+    const view = this.getActiveMarkdownView();
+    if (!view) return;
+    this.stopAutoScroll();
+
+    const currentLine = this.getCurrentScrollLine();
+    const pageSize = this.getPageSizeInLines();
+
+    const surrounding = getSurroundingHeadings(this.rawHeadings, this.activeHeading);
+    const prevHeading = surrounding.prev;
+
+    if (prevHeading) {
+      const headingLine = prevHeading.position.start.line;
+      const lineDist = currentLine - headingLine;
+
+      if (lineDist > pageSize) {
+        const targetLine = Math.max(0, Math.round(currentLine - pageSize));
+        this.scrollToLine(targetLine);
+      } else {
+        this.jumpToSpecificHeading(prevHeading);
       }
     } else {
-      const scroller = this.currentView.contentEl.querySelector<HTMLElement>('.cm-scroller');
-      if (scroller) {
-        const scrollStep = Math.round(scroller.clientHeight * 0.85);
-        scroller.scrollBy({ top: scrollStep, behavior: 'smooth' });
-      }
+      const targetLine = Math.max(0, Math.round(currentLine - pageSize));
+      this.scrollToLine(targetLine);
     }
   }
 
   public jumpNextSibling(): void {
-    if (!this.currentView || this.rawHeadings.length === 0) return;
+    const view = this.getActiveMarkdownView();
+    if (!view || this.rawHeadings.length === 0) return;
     this.stopAutoScroll();
 
     if (!this.activeHeading) {
@@ -1219,6 +1338,46 @@ export class BidiFlowNavigatorCore extends Component {
       this.jumpToSpecificHeading(target);
     } else if (currIdx + 1 < this.rawHeadings.length) {
       this.jumpToSpecificHeading(this.rawHeadings[currIdx + 1]);
+    }
+  }
+
+  public jumpPrevSibling(): void {
+    const view = this.getActiveMarkdownView();
+    if (!view || this.rawHeadings.length === 0) return;
+    this.stopAutoScroll();
+
+    if (!this.activeHeading) {
+      this.jumpToSpecificHeading(this.rawHeadings[0]);
+      return;
+    }
+
+    const currIdx = this.activeIndex >= 0 ? this.activeIndex : this.rawHeadings.indexOf(this.activeHeading);
+    if (currIdx <= 0) {
+      return;
+    }
+
+    const currLevel = this.activeHeading.level;
+
+    // If at level 1 or 2: go to previous heading directly
+    if (currLevel <= 2) {
+      this.jumpToSpecificHeading(this.rawHeadings[currIdx - 1]);
+      return;
+    }
+
+    // If at level 3, 4, 5, 6: search backward for previous sibling (same level) or parent section (level < currLevel)
+    let target: HeadingCache | null = null;
+    for (let i = currIdx - 1; i >= 0; i--) {
+      const h = this.rawHeadings[i];
+      if (h.level <= currLevel) {
+        target = h;
+        break;
+      }
+    }
+
+    if (target) {
+      this.jumpToSpecificHeading(target);
+    } else {
+      this.jumpToSpecificHeading(this.rawHeadings[currIdx - 1]);
     }
   }
 

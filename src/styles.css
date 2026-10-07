@@ -496,11 +496,11 @@
 .bidi-flow-bottom-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-evenly;
-  padding: 4px 8px;
+  justify-content: center;
+  padding: 4px 6px;
   background-color: var(--bidi-bg-alt, var(--background-secondary));
   border-top: 1px solid var(--bidi-border, var(--background-modifier-border));
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
   box-sizing: border-box;
   min-height: 36px;
@@ -537,6 +537,13 @@
   width: 15px;
   height: 15px;
   stroke-width: 2;
+}
+
+.bidi-flow-auto-scroll-btn {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border-radius: var(--radius-m);
 }
 
 /* Pulsing and Active state for Auto Scroll */

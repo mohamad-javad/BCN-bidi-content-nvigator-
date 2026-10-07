@@ -187,6 +187,22 @@ export class BidiFlowSettingTab extends PluginSettingTab {
         },
       },
       {
+        name: tr.showPrevSiblingBtnName,
+        desc: tr.showPrevSiblingBtnDesc,
+        control: {
+          type: 'toggle',
+          key: 'showPrevSiblingBtn',
+        },
+      },
+      {
+        name: tr.showPrevPartBtnName,
+        desc: tr.showPrevPartBtnDesc,
+        control: {
+          type: 'toggle',
+          key: 'showPrevPartBtn',
+        },
+      },
+      {
         name: tr.showAutoScrollBtnName,
         desc: tr.showAutoScrollBtnDesc,
         control: {
@@ -489,6 +505,34 @@ export class BidiFlowSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.autoScrollSpeed)
           .onChange(async (val) => {
             this.plugin.settings.autoScrollSpeed = val;
+            await this.plugin.saveSettings();
+            this.plugin.refreshAllWidgets();
+          })
+      );
+
+    // Show Prev Sibling Button Toggle
+    new Setting(containerEl)
+      .setName(tr.showPrevSiblingBtnName)
+      .setDesc(tr.showPrevSiblingBtnDesc)
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showPrevSiblingBtn)
+          .onChange(async (val) => {
+            this.plugin.settings.showPrevSiblingBtn = val;
+            await this.plugin.saveSettings();
+            this.plugin.refreshAllWidgets();
+          })
+      );
+
+    // Show Prev Part Button Toggle
+    new Setting(containerEl)
+      .setName(tr.showPrevPartBtnName)
+      .setDesc(tr.showPrevPartBtnDesc)
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showPrevPartBtn)
+          .onChange(async (val) => {
+            this.plugin.settings.showPrevPartBtn = val;
             await this.plugin.saveSettings();
             this.plugin.refreshAllWidgets();
           })

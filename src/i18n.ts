@@ -89,7 +89,15 @@ export const TRANSLATIONS = {
     nextSibling: 'سرتیتر هم‌سطح بعدی',
     cmdToggleAutoScroll: 'پیمایش خودکار سند (شروع / توقف)',
     cmdNextPart: 'پرش به بخش بعدی سند',
+    cmdPrevPart: 'پرش به بخش قبلی سند',
     cmdNextSibling: 'پرش به سرتیتر هم‌سطح بعدی',
+    cmdPrevSibling: 'پرش به سرتیتر هم‌سطح قبلی',
+    prevPart: 'بخش قبلی (پرش صفحه‌ای)',
+    prevSibling: 'سرتیتر هم‌سطح قبلی',
+    showPrevPartBtnName: 'دکمه بخش قبلی (Prev Part)',
+    showPrevPartBtnDesc: 'پرش به بخش یا صفحه قبل',
+    showPrevSiblingBtnName: 'دکمه سرتیتر هم‌سطح قبلی (Prev Sibling)',
+    showPrevSiblingBtnDesc: 'پرش به سرتیتر هم‌سطح یا والد قبلی',
   },
   en: {
     brand: 'BiDi Flow',
@@ -179,7 +187,15 @@ export const TRANSLATIONS = {
     nextSibling: 'Next Sibling Heading',
     cmdToggleAutoScroll: 'Toggle Auto Scroll',
     cmdNextPart: 'Jump to Next Part',
+    cmdPrevPart: 'Jump to Previous Part',
     cmdNextSibling: 'Jump to Next Sibling Heading',
+    cmdPrevSibling: 'Jump to Previous Sibling Heading',
+    prevPart: 'Previous Part (Page Jump)',
+    prevSibling: 'Previous Sibling Heading',
+    showPrevPartBtnName: 'Previous Part Button',
+    showPrevPartBtnDesc: 'Jump back by one page or to the previous heading',
+    showPrevSiblingBtnName: 'Previous Sibling Button',
+    showPrevSiblingBtnDesc: 'Jump to previous sibling heading',
   }
 };
 
