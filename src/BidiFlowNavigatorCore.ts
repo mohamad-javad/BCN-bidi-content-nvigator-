@@ -1212,10 +1212,11 @@ export class BidiFlowNavigatorCore extends Component {
         }
       } else {
         atBottomFrames = 0;
-        try {
-          scrollContainer.scrollBy({ top: deltaPx, behavior: 'instant' });
-        } catch {
-          scrollContainer.scrollTop += deltaPx;
+        this.autoScrollAccumulator += deltaPx;
+        if (this.autoScrollAccumulator >= 1) {
+          const pxToScroll = Math.floor(this.autoScrollAccumulator);
+          this.autoScrollAccumulator -= pxToScroll;
+          scrollContainer.scrollTop += pxToScroll;
         }
       }
 

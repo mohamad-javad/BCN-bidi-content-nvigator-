@@ -700,7 +700,7 @@
   border-radius: 50%;
   background-color: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: none;
   color: var(--text-muted);
   cursor: pointer;
   margin-bottom: 6px;
@@ -713,7 +713,7 @@
   background-color: var(--background-modifier-hover);
   color: var(--interactive-accent);
   transform: scale(1.08);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: none;
 }
 
 /* Collapsed State Fallback */
@@ -979,7 +979,7 @@
   backdrop-filter: blur(18px) saturate(180%);
   -webkit-backdrop-filter: blur(18px) saturate(180%);
   border: 1px solid rgba(var(--bidi-border-rgb), 0.35);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: none;
   color: var(--bidi-text);
 }
 
@@ -1026,5 +1026,6 @@
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid rgba(var(--bidi-border-rgb), 0.35);
+  box-shadow: none;
 }
 
