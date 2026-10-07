@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, SettingDefinitionItem } from 'obsidian';
 import type BidiFlowNavigatorPlugin from './main';
 import { t } from './i18n';
 import { NavigatorDisplayMode } from './types';
@@ -9,6 +9,148 @@ export class BidiFlowSettingTab extends PluginSettingTab {
   constructor(app: App, plugin: BidiFlowNavigatorPlugin) {
     super(app, plugin);
     this.plugin = plugin;
+  }
+
+  public override getSettingDefinitions(): SettingDefinitionItem[] {
+    const tr = t(this.plugin.settings.uiLanguage);
+
+    return [
+      {
+        name: tr.langSettingName,
+        desc: tr.langSettingDesc,
+        control: {
+          type: 'dropdown',
+          key: 'uiLanguage',
+          options: {
+            fa: tr.langFa,
+            en: tr.langEn,
+          },
+        },
+      },
+      {
+        name: tr.showFloatingName,
+        desc: tr.showFloatingDesc,
+        control: {
+          type: 'toggle',
+          key: 'showFloatingWidget',
+        },
+      },
+      {
+        name: tr.floatingPosName,
+        desc: tr.floatingPosDesc,
+        control: {
+          type: 'dropdown',
+          key: 'floatingPosition',
+          options: {
+            right: tr.posRight,
+            left: tr.posLeft,
+          },
+        },
+      },
+      {
+        name: tr.defaultModeName,
+        desc: tr.defaultModeDesc,
+        control: {
+          type: 'dropdown',
+          key: 'defaultMode',
+          options: {
+            floating: tr.modeFloating,
+            mini: tr.modeMini,
+            'full-height': tr.modeFullHeight,
+          },
+        },
+      },
+      {
+        name: tr.widgetWidthName,
+        desc: tr.widgetWidthDesc,
+        control: {
+          type: 'slider',
+          key: 'widgetWidth',
+          min: 200,
+          max: 420,
+          step: 10,
+        },
+      },
+      {
+        name: tr.persianNumeralsName,
+        desc: tr.persianNumeralsDesc,
+        control: {
+          type: 'toggle',
+          key: 'persianNumerals',
+        },
+      },
+      {
+        name: tr.progressBarName,
+        desc: tr.progressBarDesc,
+        control: {
+          type: 'toggle',
+          key: 'showProgressBar',
+        },
+      },
+      {
+        name: tr.searchName,
+        desc: tr.searchDesc,
+        control: {
+          type: 'toggle',
+          key: 'showSearch',
+        },
+      },
+      {
+        name: tr.levelBadgeName,
+        desc: tr.levelBadgeDesc,
+        control: {
+          type: 'toggle',
+          key: 'showLevelBadge',
+        },
+      },
+      {
+        name: tr.indentStepName,
+        desc: tr.indentStepDesc,
+        control: {
+          type: 'slider',
+          key: 'indentStepPx',
+          min: 6,
+          max: 24,
+          step: 2,
+        },
+      },
+      {
+        name: tr.maxLevelName,
+        desc: tr.maxLevelDesc,
+        control: {
+          type: 'dropdown',
+          key: 'maxHeadingLevel',
+          options: {
+            '1': tr.h1Only,
+            '2': tr.upToLevel(2),
+            '3': tr.upToLevel(3),
+            '4': tr.upToLevel(4),
+            '5': tr.upToLevel(5),
+            '6': tr.allLevels,
+          },
+        },
+      },
+    ];
+  }
+
+  public override getControlValue(key: string): unknown {
+    if (key === 'maxHeadingLevel') {
+      return String(this.plugin.settings.maxHeadingLevel);
+    }
+    return (this.plugin.settings as unknown as Record<string, unknown>)[key];
+  }
+
+  public override async setControlValue(key: string, value: unknown): Promise<void> {
+    if (key === 'maxHeadingLevel') {
+      this.plugin.settings.maxHeadingLevel = parseInt(value as string, 10);
+    } else {
+      (this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
+    }
+    await this.plugin.saveSettings();
+    this.plugin.refreshAllWidgets();
+    if (key === 'uiLanguage') {
+      this.renderSettings();
+    }
   }
 
   public display(): void {
