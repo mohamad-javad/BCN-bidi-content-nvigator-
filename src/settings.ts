@@ -159,6 +159,14 @@ export class BidiFlowSettingTab extends PluginSettingTab {
           },
         },
       },
+      {
+        name: tr.rememberLastHeadingName,
+        desc: tr.rememberLastHeadingDesc,
+        control: {
+          type: 'toggle',
+          key: 'rememberLastHeading',
+        },
+      },
     ];
   }
 
@@ -398,6 +406,19 @@ export class BidiFlowSettingTab extends PluginSettingTab {
             this.plugin.settings.themeStyle = val as BidiThemeStyle;
             await this.plugin.saveSettings();
             this.plugin.refreshAllWidgets();
+          })
+      );
+
+    // Remember Last Heading Position
+    new Setting(containerEl)
+      .setName(tr.rememberLastHeadingName)
+      .setDesc(tr.rememberLastHeadingDesc)
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.rememberLastHeading)
+          .onChange(async (val) => {
+            this.plugin.settings.rememberLastHeading = val;
+            await this.plugin.saveSettings();
           })
       );
   }

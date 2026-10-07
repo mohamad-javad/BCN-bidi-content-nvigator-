@@ -20,6 +20,15 @@ export interface BidiFlowSettings {
   widgetWidth: number;
   colorTheme: BidiColorTheme;
   themeStyle: BidiThemeStyle;
+  rememberLastHeading: boolean;
+  savedHeadingPositions: Record<string, SavedHeadingPosition>;
+}
+
+export interface SavedHeadingPosition {
+  headingText: string;
+  line: number;
+  level: number;
+  timestamp: number;
 }
 
 export const DEFAULT_SETTINGS: BidiFlowSettings = {
@@ -37,6 +46,8 @@ export const DEFAULT_SETTINGS: BidiFlowSettings = {
   widgetWidth: 260,
   colorTheme: 'default',
   themeStyle: 'solid',
+  rememberLastHeading: true,
+  savedHeadingPositions: {},
 };
 
 export interface BidiHeadingNode {

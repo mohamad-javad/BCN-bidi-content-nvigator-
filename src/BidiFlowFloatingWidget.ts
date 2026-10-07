@@ -1,4 +1,4 @@
-import { Component, MarkdownView, setIcon, setTooltip } from 'obsidian';
+import { Component, MarkdownView, setIcon, setTooltip, HeadingCache } from 'obsidian';
 import { BidiFlowNavigatorCore } from './BidiFlowNavigatorCore';
 import { BidiFlowSettings, NavigatorDisplayMode } from './types';
 import { t } from './i18n';
@@ -6,6 +6,7 @@ import { t } from './i18n';
 export class BidiFlowFloatingWidget extends Component {
   public view: MarkdownView;
   private settings: BidiFlowSettings;
+  private onHeadingChange?: (heading: HeadingCache) => void;
   private hostContainerEl!: HTMLElement;
   private cardEl!: HTMLElement;
   private toggleBtnEl!: HTMLElement;
@@ -15,10 +16,15 @@ export class BidiFlowFloatingWidget extends Component {
   private currentMode: NavigatorDisplayMode;
   private previousExpandedMode: 'floating' | 'full-height' = 'floating';
 
-  constructor(view: MarkdownView, settings: BidiFlowSettings) {
+  constructor(
+    view: MarkdownView,
+    settings: BidiFlowSettings,
+    onHeadingChange?: (heading: HeadingCache) => void
+  ) {
     super();
     this.view = view;
     this.settings = settings;
+    this.onHeadingChange = onHeadingChange;
     this.currentMode = settings.defaultMode || 'floating';
     if (this.currentMode !== 'mini') {
       this.previousExpandedMode = this.currentMode;
@@ -71,6 +77,9 @@ export class BidiFlowFloatingWidget extends Component {
 
     // Instantiate core component
     this.core = this.addChild(new BidiFlowNavigatorCore(this.cardEl, this.settings));
+    if (this.onHeadingChange) {
+      this.core.setOnActiveHeadingChange(this.onHeadingChange);
+    }
 
     // Wire up window control buttons from header
     this.core.setWindowControlHandlers(

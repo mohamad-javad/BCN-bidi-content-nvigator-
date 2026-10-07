@@ -55,6 +55,11 @@ export class BidiFlowNavigatorCore extends Component {
   private rafId: number | null = null;
   private isUserInteractingWithTree = false;
   private userScrollTimeout: number | null = null;
+  private onActiveHeadingChange?: (heading: HeadingCache) => void;
+
+  public setOnActiveHeadingChange(callback: (heading: HeadingCache) => void): void {
+    this.onActiveHeadingChange = callback;
+  }
 
   constructor(containerEl: HTMLElement, settings: BidiFlowSettings) {
     super();
@@ -460,6 +465,7 @@ export class BidiFlowNavigatorCore extends Component {
             this.isUserInteractingWithTree = false;
             // Instantly update active heading, UI badge, tree highlight, and progress bar
             this.activeHeading = node.heading;
+            this.onActiveHeadingChange?.(node.heading);
             const surrounding = getSurroundingHeadings(this.rawHeadings, node.heading);
             this.activeIndex = surrounding.activeIndex;
             this.updateHeaderDisplay(surrounding);
@@ -637,6 +643,9 @@ export class BidiFlowNavigatorCore extends Component {
 
     const active = getActiveHeading(this.currentView, this.rawHeadings, 60);
     this.activeHeading = active;
+    if (active) {
+      this.onActiveHeadingChange?.(active);
+    }
 
     const surrounding = getSurroundingHeadings(this.rawHeadings, active);
     this.activeIndex = surrounding.activeIndex;
@@ -882,6 +891,7 @@ export class BidiFlowNavigatorCore extends Component {
       this.isUserInteractingWithTree = false;
       // Instantly update active heading, UI badge, tree highlight, and progress bar
       this.activeHeading = target;
+      this.onActiveHeadingChange?.(target);
       const targetSurrounding = getSurroundingHeadings(this.rawHeadings, target);
       this.activeIndex = targetSurrounding.activeIndex;
       this.updateHeaderDisplay(targetSurrounding);
@@ -891,6 +901,16 @@ export class BidiFlowNavigatorCore extends Component {
       scrollToHeading(this.currentView, target, 'smooth');
       this.currentView.editor.focus();
     }
+  }
+
+  public setActiveHeadingManually(heading: HeadingCache): void {
+    if (this.rawHeadings.length === 0) return;
+    this.activeHeading = heading;
+    const surrounding = getSurroundingHeadings(this.rawHeadings, heading);
+    this.activeIndex = surrounding.activeIndex;
+    this.updateHeaderDisplay(surrounding);
+    this.highlightActiveInTree();
+    this.calculateReadingProgress();
   }
 
   public clear(): void {

@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, MarkdownView, setTooltip } from 'obsidian';
+import { ItemView, WorkspaceLeaf, MarkdownView, setTooltip, HeadingCache } from 'obsidian';
 import { BidiFlowNavigatorCore } from './BidiFlowNavigatorCore';
 import { BidiFlowSettings } from './types';
 import { t } from './i18n';
@@ -14,11 +14,17 @@ interface TabHeaderLeaf {
 export class BidiFlowSidebarView extends ItemView {
   public core!: BidiFlowNavigatorCore;
   private settings: BidiFlowSettings;
+  private onHeadingChange?: (heading: HeadingCache) => void;
   private currentMarkdownView: MarkdownView | null = null;
 
-  constructor(leaf: WorkspaceLeaf, settings: BidiFlowSettings) {
+  constructor(
+    leaf: WorkspaceLeaf,
+    settings: BidiFlowSettings,
+    onHeadingChange?: (heading: HeadingCache) => void
+  ) {
     super(leaf);
     this.settings = settings;
+    this.onHeadingChange = onHeadingChange;
   }
 
   public getViewType(): string {
@@ -41,6 +47,9 @@ export class BidiFlowSidebarView extends ItemView {
     container.setAttribute('data-theme-style', this.settings.themeStyle || 'solid');
 
     this.core = this.addChild(new BidiFlowNavigatorCore(container, this.settings));
+    if (this.onHeadingChange) {
+      this.core.setOnActiveHeadingChange(this.onHeadingChange);
+    }
     this.core.hideWindowControls();
 
     // Set initial tab header tooltip according to current language
