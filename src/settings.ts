@@ -219,6 +219,14 @@ export class BidiFlowSettingTab extends PluginSettingTab {
         },
       },
       {
+        name: tr.nextPartPageScrollName,
+        desc: tr.nextPartPageScrollDesc,
+        control: {
+          type: 'toggle',
+          key: 'nextPartPageScroll',
+        },
+      },
+      {
         name: tr.showNextSiblingBtnName,
         desc: tr.showNextSiblingBtnDesc,
         control: {
@@ -573,6 +581,20 @@ export class BidiFlowSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.showNextPartBtn)
           .onChange(async (val) => {
             this.plugin.settings.showNextPartBtn = val;
+            await this.plugin.saveSettings();
+            this.plugin.refreshAllWidgets();
+          })
+      );
+
+    // Page Down / Page Up Mode for Next/Prev Part Buttons Toggle
+    new Setting(containerEl)
+      .setName(tr.nextPartPageScrollName)
+      .setDesc(tr.nextPartPageScrollDesc)
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.nextPartPageScroll)
+          .onChange(async (val) => {
+            this.plugin.settings.nextPartPageScroll = val;
             await this.plugin.saveSettings();
             this.plugin.refreshAllWidgets();
           })

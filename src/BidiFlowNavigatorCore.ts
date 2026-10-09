@@ -123,12 +123,20 @@ export class BidiFlowNavigatorCore extends Component {
     }
     if (this.prevPartBtnEl) {
       this.prevPartBtnEl.toggleVisibility(this.settings.showPrevPartBtn);
+      const tr = t(this.settings.uiLanguage);
+      const prevTip = this.settings.nextPartPageScroll ? tr.pageUp : tr.prevPart;
+      setTooltip(this.prevPartBtnEl, prevTip);
+      this.prevPartBtnEl.setAttribute('aria-label', prevTip);
     }
     if (this.autoScrollBtnEl) {
       this.autoScrollBtnEl.toggleVisibility(this.settings.showAutoScrollBtn);
     }
     if (this.nextPartBtnEl) {
       this.nextPartBtnEl.toggleVisibility(this.settings.showNextPartBtn);
+      const tr = t(this.settings.uiLanguage);
+      const nextTip = this.settings.nextPartPageScroll ? tr.pageDown : tr.nextPart;
+      setTooltip(this.nextPartBtnEl, nextTip);
+      this.nextPartBtnEl.setAttribute('aria-label', nextTip);
     }
     if (this.nextSiblingBtnEl) {
       this.nextSiblingBtnEl.toggleVisibility(this.settings.showNextSiblingBtn);
@@ -302,12 +310,13 @@ export class BidiFlowNavigatorCore extends Component {
     }
 
     // 2) Prev Part Button
+    const prevPartTip = this.settings.nextPartPageScroll ? tr.pageUp : tr.prevPart;
     this.prevPartBtnEl = this.bottomToolbarEl.createEl('button', {
       cls: 'clickable-icon bidi-flow-btn bidi-flow-toolbar-btn bidi-flow-prev-part-btn',
-      attr: { 'aria-label': tr.prevPart }
+      attr: { 'aria-label': prevPartTip }
     });
     setIcon(this.prevPartBtnEl, 'chevron-up');
-    setTooltip(this.prevPartBtnEl, tr.prevPart);
+    setTooltip(this.prevPartBtnEl, prevPartTip);
     if (!this.settings.showPrevPartBtn) {
       this.prevPartBtnEl.hide();
     }
@@ -324,12 +333,13 @@ export class BidiFlowNavigatorCore extends Component {
     }
 
     // 4) Next Part Button (Smart Page / Heading Jump)
+    const nextPartTip = this.settings.nextPartPageScroll ? tr.pageDown : tr.nextPart;
     this.nextPartBtnEl = this.bottomToolbarEl.createEl('button', {
       cls: 'clickable-icon bidi-flow-btn bidi-flow-toolbar-btn bidi-flow-next-part-btn',
-      attr: { 'aria-label': tr.nextPart }
+      attr: { 'aria-label': nextPartTip }
     });
     setIcon(this.nextPartBtnEl, 'chevron-down');
-    setTooltip(this.nextPartBtnEl, tr.nextPart);
+    setTooltip(this.nextPartBtnEl, nextPartTip);
     if (!this.settings.showNextPartBtn) {
       this.nextPartBtnEl.hide();
     }
@@ -1281,10 +1291,38 @@ export class BidiFlowNavigatorCore extends Component {
     }
   }
 
+  public scrollPage(direction: 'down' | 'up'): void {
+    const view = this.getActiveMarkdownView();
+    if (!view) return;
+    this.stopAutoScroll();
+
+    const scrollContainer = this.getScrollContainer(view);
+    if (scrollContainer && scrollContainer.clientHeight > 50) {
+      const pageDelta = Math.round(scrollContainer.clientHeight * 0.85);
+      scrollContainer.scrollBy({
+        top: direction === 'down' ? pageDelta : -pageDelta,
+        behavior: 'smooth',
+      });
+    } else {
+      const currentLine = this.getCurrentScrollLine();
+      const pageSize = this.getPageSizeInLines();
+      const totalLines = view.editor ? view.editor.lineCount() : 1000;
+      const targetLine = direction === 'down'
+        ? Math.min(totalLines - 1, Math.round(currentLine + pageSize))
+        : Math.max(0, Math.round(currentLine - pageSize));
+      this.scrollToLine(targetLine);
+    }
+  }
+
   public jumpNextPart(): void {
     const view = this.getActiveMarkdownView();
     if (!view) return;
     this.stopAutoScroll();
+
+    if (this.settings.nextPartPageScroll) {
+      this.scrollPage('down');
+      return;
+    }
 
     const currentLine = this.getCurrentScrollLine();
     const pageSize = this.getPageSizeInLines();
@@ -1313,6 +1351,11 @@ export class BidiFlowNavigatorCore extends Component {
     const view = this.getActiveMarkdownView();
     if (!view) return;
     this.stopAutoScroll();
+
+    if (this.settings.nextPartPageScroll) {
+      this.scrollPage('up');
+      return;
+    }
 
     const currentLine = this.getCurrentScrollLine();
     const pageSize = this.getPageSizeInLines();

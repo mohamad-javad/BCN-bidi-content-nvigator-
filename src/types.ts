@@ -27,6 +27,7 @@ export interface BidiFlowSettings {
   showAutoScrollBtn: boolean;
   showNextPartBtn: boolean;
   showPrevPartBtn: boolean;
+  nextPartPageScroll: boolean;
   showNextSiblingBtn: boolean;
   showPrevSiblingBtn: boolean;
   deepHeadingJumpTarget: 'parent' | 'sibling';
@@ -61,6 +62,7 @@ export const DEFAULT_SETTINGS: BidiFlowSettings = {
   showAutoScrollBtn: true,
   showNextPartBtn: true,
   showPrevPartBtn: true,
+  nextPartPageScroll: false,
   showNextSiblingBtn: true,
   showPrevSiblingBtn: true,
   deepHeadingJumpTarget: 'parent',
