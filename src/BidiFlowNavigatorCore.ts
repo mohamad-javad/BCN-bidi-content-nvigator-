@@ -989,7 +989,10 @@ export class BidiFlowNavigatorCore extends Component {
   }
 
   public jumpToSpecificHeading(target: HeadingCache): void {
-    if (!this.currentView) return;
+    const view = this.getActiveMarkdownView();
+    if (!view) return;
+    this.currentView = view;
+
     this.stopAutoScroll();
     this.isUserInteractingWithTree = false;
 
@@ -1002,7 +1005,7 @@ export class BidiFlowNavigatorCore extends Component {
     this.highlightActiveInTree();
     this.calculateReadingProgress();
 
-    scrollWithRetry(this.currentView, target, 'smooth');
+    scrollToHeading(this.currentView, target, 'smooth');
     if (this.currentView.editor) {
       try {
         this.currentView.editor.setCursor({ line: target.position.start.line, ch: 0 });

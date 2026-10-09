@@ -156,7 +156,7 @@ export function getActiveHeadingInSourceMode(
     }
   }
 
-  return null;
+  return headings[0] ?? null;
 }
 
 /**
@@ -211,7 +211,7 @@ export function getActiveHeadingInReadingView(
     return findLatestHeadingBeforeLine(headings, Math.floor(currentScrollLine + 2));
   }
 
-  return null;
+  return headings[0] ?? null;
 }
 
 /**
@@ -281,6 +281,8 @@ export function scrollToHeadingInSourceMode(
   const editor = view.editor;
   if (!editor || editor.lineCount() <= targetLine) return false;
 
+  let scrolled = false;
+
   // 1. Position editor cursor
   try {
     editor.setCursor({ line: targetLine, ch: 0 });
@@ -288,7 +290,19 @@ export function scrollToHeadingInSourceMode(
     // Ignore
   }
 
-  // 2. Direct CodeMirror 6 scroll on cm-scroller for immediate, guaranteed top positioning
+  // 2. Obsidian native subView applyScroll to position heading at top
+  try {
+    const subView = (view as unknown as { currentMode?: MarkdownSubView; editMode?: MarkdownSubView }).currentMode ??
+                    (view as unknown as { editMode?: MarkdownSubView }).editMode;
+    if (typeof subView?.applyScroll === 'function') {
+      subView.applyScroll(targetLine);
+      scrolled = true;
+    }
+  } catch {
+    // Ignore
+  }
+
+  // 3. Direct CodeMirror 6 scroll on cm-scroller for immediate, guaranteed top positioning
   const scroller = view.contentEl.querySelector<HTMLElement>('.cm-scroller');
   if (scroller) {
     const cm = getCodeMirrorView(editor);
@@ -299,7 +313,7 @@ export function scrollToHeadingInSourceMode(
         const block = cm.lineBlockAt ? cm.lineBlockAt(linePos) : null;
         if (block) {
           scroller.scrollTo({ top: block.top, behavior });
-          return true; // We successfully found the block and scrolled to it
+          scrolled = true;
         }
       } catch {
         // Ignore
@@ -307,17 +321,26 @@ export function scrollToHeadingInSourceMode(
     }
   }
 
-  // 3. Fallback: editor scrollIntoView (we still try it, but we return false to keep retrying until block is ready)
+  // 4. Editor scrollIntoView fallback
   try {
     editor.scrollIntoView(
       { from: { line: targetLine, ch: 0 }, to: { line: targetLine, ch: 0 } },
       false
     );
+    scrolled = true;
   } catch {
     // Ignore
   }
-  
-  return false;
+
+  // 5. Ephemeral state fallback
+  try {
+    view.setEphemeralState({ line: targetLine });
+    scrolled = true;
+  } catch {
+    // Ignore
+  }
+
+  return scrolled;
 }
 
 /**
@@ -357,20 +380,40 @@ export function scrollToHeadingInReadingView(
     return true;
   }
 
-  // If DOM is not ready, we apply scroll blindly to Obsidian just in case it handles it later,
-  // but we STILL return false so our retry loop keeps waiting for the DOM element to appear.
+  // Ensure preview.applyScroll is also called for accurate virtual positioning
+  let applied = false;
   try {
     const previewRenderer = (preview as unknown as { renderer?: { applyScrollDelayed?: (line: number) => void; applyScroll?: (line: number) => boolean } })?.renderer;
     if (typeof previewRenderer?.applyScrollDelayed === 'function') {
       previewRenderer.applyScrollDelayed(targetLine);
+      applied = true;
     } else {
       const previewScroll = preview as unknown as MarkdownPreviewViewWithScroll;
       if (typeof previewScroll.applyScroll === 'function') {
         previewScroll.applyScroll(targetLine);
+        applied = true;
       }
     }
   } catch {
     // Ignore
+  }
+
+  try {
+    view.setEphemeralState({ line: targetLine });
+    applied = true;
+  } catch {
+    // Ignore
+  }
+
+  if (applied) {
+    window.setTimeout(() => {
+      if (!view.containerEl.isConnected) return;
+      const delayedEl = findTargetEl();
+      if (delayedEl) {
+        delayedEl.scrollIntoView({ behavior: 'auto', block: 'start' });
+      }
+    }, 100);
+    return true;
   }
 
   return false;
@@ -415,11 +458,11 @@ export function scrollWithRetry(
 
   const interval = window.setInterval(() => {
     attempts++;
-    if (tryScroll() || attempts >= 8) {
+    if (tryScroll() || attempts >= 30) {
       window.clearInterval(interval);
-      if (attempts >= 8) {
+      if (attempts >= 30) {
         onSuccess?.();
       }
     }
-  }, 500);
+  }, 50);
 }
