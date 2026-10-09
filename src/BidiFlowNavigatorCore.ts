@@ -868,6 +868,9 @@ export class BidiFlowNavigatorCore extends Component {
       }
       if (neededReRender) {
         this.renderTree();
+        // Highlight must be called again after re-render because renderTree
+        // rebuilds the entire DOM and the previous is-active class is lost.
+        this.highlightNode(activeNode);
         return;
       }
       this.highlightNode(activeNode);
@@ -1517,6 +1520,18 @@ export class BidiFlowNavigatorCore extends Component {
 
   public getActiveHeading(): HeadingCache | null {
     return this.activeHeading;
+  }
+
+  /** Returns the number of headings currently loaded. Used to detect if setView has been called yet. */
+  public getHeadingCount(): number {
+    return this.rawHeadings.length;
+  }
+
+  /** Hides the maximize/restore toggle button (used on mobile where full-height mode is not supported). */
+  public hideModeToggleButton(): void {
+    if (this.modeToggleBtn) {
+      this.modeToggleBtn.hide();
+    }
   }
 
   public clear(): void {

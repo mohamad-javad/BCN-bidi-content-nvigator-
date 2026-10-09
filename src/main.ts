@@ -17,6 +17,8 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
   private debouncedSaveSettingsTimer: number | null = null;
   private viewModeMap: WeakMap<MarkdownView, string> = new WeakMap();
   private lastActiveHeadings: WeakMap<MarkdownView, HeadingCache> = new WeakMap();
+  /** Tracks all pending restore intervals so they can be cleared on plugin unload. */
+  private restoreIntervals: Set<number> = new Set();
 
   async onload() {
     await this.loadSettings();
@@ -624,6 +626,7 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
 
     const tryRestore = (): boolean => {
       if (!view.containerEl.isConnected || view.file?.path !== file.path) {
+        // View disconnected or navigated away — cancel cleanly
         this.restoringFiles.delete(file.path);
         return true;
       }
@@ -645,7 +648,7 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
         }
       }
 
-      // Restore position cleanly
+      // Restore scroll position
       const ok = scrollToHeading(view, targetHeading, 'auto');
       if (!ok) return false;
 
@@ -657,11 +660,18 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
         widget.core.setActiveHeadingManually(targetHeading);
       }
 
-      // Update active heading in sidebar
+      // Update active heading in sidebar.
+      // Race condition guard: if sidebar core hasn't loaded this view's headings yet
+      // (e.g. active-leaf-change fires after file-open), call setView first so
+      // rawHeadings gets populated before setActiveHeadingManually.
       const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
       for (const leaf of sidebarLeaves) {
         if (leaf.view instanceof BidiFlowSidebarView && leaf.view.core) {
-          leaf.view.core.setActiveHeadingManually(targetHeading);
+          const sidebarCore = leaf.view.core;
+          if (sidebarCore.getHeadingCount() === 0) {
+            sidebarCore.setView(view);
+          }
+          sidebarCore.setActiveHeadingManually(targetHeading);
         }
       }
 
@@ -681,15 +691,23 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
       attempts++;
       if (tryRestore() || attempts >= 30) {
         window.clearInterval(interval);
+        this.restoreIntervals.delete(interval);
         if (attempts >= 30) {
           this.restoringFiles.delete(file.path);
         }
       }
     }, 35);
+    // Track interval so it can be cleared if the plugin is unloaded mid-restore
+    this.restoreIntervals.add(interval);
   }
 
   onunload() {
     this.flushSaveSettings();
     this.destroyAllFloatingWidgets();
+    // Clear any pending restore intervals to prevent post-unload callbacks
+    for (const id of this.restoreIntervals) {
+      window.clearInterval(id);
+    }
+    this.restoreIntervals.clear();
   }
 }

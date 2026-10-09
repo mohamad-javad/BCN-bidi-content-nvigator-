@@ -14,7 +14,6 @@ export interface BidiFlowSettings {
   showProgressBar: boolean;
   showSearch: boolean;
   showLevelBadge: boolean;
-  accentGlow: boolean;
   persianNumerals: boolean;
   maxHeadingLevel: number;
   widgetWidth: number;
@@ -49,7 +48,6 @@ export const DEFAULT_SETTINGS: BidiFlowSettings = {
   showProgressBar: true,
   showSearch: true,
   showLevelBadge: false,
-  accentGlow: true,
   persianNumerals: true,
   maxHeadingLevel: 6,
   widgetWidth: 260,

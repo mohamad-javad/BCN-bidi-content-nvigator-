@@ -88,6 +88,11 @@ export class BidiFlowFloatingWidget extends Component {
     );
     this.core.updateWindowControls(this.currentMode);
 
+    // Full-height mode is not available on mobile — hide the maximize button
+    if (Platform.isMobile) {
+      this.core.hideModeToggleButton();
+    }
+
     this.core.setView(this.view);
   }
 

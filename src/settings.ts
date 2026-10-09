@@ -11,6 +11,14 @@ export class BidiFlowSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
+
+  /**
+   * Obsidian Settings API (newer declarative approach).
+   * ⚠️  IMPORTANT: Keep this list in sync with renderSettings() below.
+   * Any setting added/removed here must also be added/removed in renderSettings().
+   * Both methods coexist: getSettingDefinitions() serves the declarative API consumer,
+   * renderSettings() serves the traditional imperative display() call.
+   */
   public override getSettingDefinitions(): SettingDefinitionItem[] {
     const tr = t(this.plugin.settings.uiLanguage);
 
