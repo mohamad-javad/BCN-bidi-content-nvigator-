@@ -2,54 +2,54 @@
 
 [![Obsidian Plugin](https://img.shields.io/badge/Obsidian-Plugin-7C3AED?logo=obsidian&logoColor=white)](https://obsidian.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Latest Release](https://img.shields.io/badge/release-v1.2.1-emerald.svg)](https://github.com/mohamad-javad/BCN-bidi-content-nvigator-/releases)
+[![Latest Release](https://img.shields.io/badge/release-v1.2.2-emerald.svg)](https://github.com/mohamad-javad/BCN-bidi-content-nvigator-/releases)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-**BiDi Flow Navigator** is a document outline and navigation plugin for [Obsidian](https://obsidian.md). Specifically built to handle **Bidirectional (BiDi) text (Persian, Arabic, and mixed RTL/LTR)**, it provides heading tracking, section jumping, reading progress calculation, position memory across mode switches, customizable themes, and synchronized auto-scrolling across devices.
+**BiDi Flow Navigator** is a highly polished document outline and navigation plugin for [Obsidian](https://obsidian.md). Specifically built to handle **Bidirectional (BiDi) text (Persian, Arabic, and mixed RTL/LTR)** flawlessly, it provides heading tracking, section jumping, reading progress calculation, precise scroll memory across mode switches, customizable themes, and synchronized auto-scrolling across devices.
 
 ---
 
-## Features
+## ✨ Features
 
-### Bidirectional & RTL Text Handling
-- Built with CSS Logical Properties (`margin-inline-start`, `inset-inline-*`), `dir="auto"`, and Unicode bidirectional rules.
-- Correctly aligns and structures mixed headings containing Persian, Arabic, English words, numbers, and technical terms.
+### 🔀 True Bidirectional & RTL Text Handling
+- Built with modern CSS Logical Properties (`margin-inline-start`, `inset-inline-*`), `dir="auto"`, and Unicode bidirectional isolation rules.
+- Correctly aligns and structures complex headings containing a mix of Persian, Arabic, English words, numbers, and technical terms.
 
-### Synchronized Auto-Scroll & 5-Button Toolbar
-- **Symmetrical Action Toolbar:** Bottom navigation bar containing:
+### 🏃 Synchronized Auto-Scroll & 5-Button Toolbar
+- **Symmetrical Action Toolbar:** A sleek bottom navigation bar containing:
   - `⏮️ Prev Sibling`: Jump backward across headings at the same or higher level.
   - `🔼 Prev Part`: Jump backward by page or section.
-  - `▶️ Auto Scroll`: Smooth continuous downward scroll with adjustable speed (10 to 200 px/s).
+  - `▶️ Auto Scroll`: Smooth, continuous downward scroll with adjustable speed (10 to 200 px/s).
   - `🔽 Next Part`: Jump forward by page or section.
   - `⏭️ Next Sibling`: Jump forward to the next sibling or parent heading.
-- **Cross-Window State Synchronization:** Toggling Auto-Scroll from either the floating window, the right sidebar, or via command palette synchronizes the play/pause state across all open panels.
-- **Sub-Pixel Motion:** Uses float accumulators to prevent stuttering or truncation at lower reading speeds (10–30 px/s) in both Reading View and Editing View.
-- **Deep Heading Logic:** Sibling navigation on H1/H2 skips nested subheadings. For H3 and deeper headings, jumping can target the parent section or same-level siblings based on your preference.
+- **Cross-Window State Synchronization:** Toggling Auto-Scroll from the floating window, the right sidebar, or via the command palette synchronizes the play/pause state across all open panels instantly.
+- **Sub-Pixel Motion Engine:** Uses float accumulators to prevent stuttering or truncation at lower reading speeds (10–30 px/s) in both Reading View and Editing View.
+- **Smart Deep Navigation:** Sibling navigation on H1/H2 skips nested subheadings. For H3 and deeper headings, jumping can target the parent section or same-level siblings based on your preference.
 
-### Position Memory & Mode Synchronization
-- **Remember Last Heading:** Remembers your active reading location per note and restores it when reopening files or restarting Obsidian.
-- **Editing & Reading View Parity:** Keeps your exact reading position when toggling between Live Preview/Source and Reading View.
+### 🧠 Robust Position Memory & Mode Synchronization
+- **Remember Last Heading:** Remembers your exact active reading location per note and restores it flawlessly when reopening files or restarting Obsidian.
+- **Editing & Reading View Parity:** Employs a robust `scrollWithRetry` engine that monitors DOM readiness to keep your exact reading position completely perfectly synchronized when toggling between Live Preview/Source and Reading View.
 
-### Adaptable Window System
-1. **Compact Pill (`mini`):** A small floating compass button docked in the corner for distraction-free reading.
-2. **Floating Card (`floating`):** A compact floating card with quick controls, responsive height, and heading tree.
+### 🪟 Adaptable Window System
+1. **Compact Pill (`mini`):** A tiny, distraction-free floating compass button docked in the corner.
+2. **Floating Card (`floating`):** A compact floating card with quick controls, responsive height, and an interactive heading tree.
 3. **Full-Height Rail (`full-height`):** Full-height side dock suitable for large desktop monitors.
 - **Mobile-Tailored Ergonomics:** On mobile phones, the floating window automatically positions itself lower (`88px` from the top) to stay clear of app headers, uses a compact maximum height, and disables full-height expansion for clean touch navigation.
 
-### Visual Themes & Design
+### 🎨 Visual Themes & Design
 - **Color Themes:** Includes **Default Obsidian**, **Dracula**, **Nord**, **Solarized**, and **Gruvbox**.
-- **Styles:** Choose between **Solid** and translucent **Glassmorphism** styling.
-- **Minimalist Finish:** Clean flat borders without heavy drop shadows.
+- **Styles:** Choose between **Solid** and modern translucent **Glassmorphism** styling.
+- **Minimalist Finish:** Clean, flat borders without heavy drop shadows for a native Obsidian feel.
 
-### Outline Features
+### 📊 Outline Features
 - **Reading Progress Bar:** Displays real-time reading progress with optional Persian digits (`۴۰٪`).
-- **Heading Search:** Real-time filter that auto-expands matching parent branches.
-- **Section Indicator:** Displays active heading with level tag (`H1`–`H6`) and counter (`۱۵ / ۱۰۱`).
+- **Heading Search:** Real-time filter that instantly auto-expands matching parent branches.
+- **Section Indicator:** Displays the active heading with a level tag (`H1`–`H6`) and a counter (`۱۵ / ۱۰۱`).
 - **Pure Bilingual UI:** Switch completely between English and Persian without mixed-language artifacts.
 
 ---
 
-## Screenshots
+## 📸 Screenshots
 
 ### Desktop: Dual-Window Outline (Floating Card & Sidebar)
 
@@ -79,7 +79,7 @@
 
 ---
 
-## Installation
+## 📥 Installation
 
 ### Using BRAT (Beta Releases)
 1. Install the **Obsidian42 - BRAT** community plugin.
@@ -98,7 +98,7 @@
 
 ---
 
-## Commands
+## ⌨️ Commands
 
 | Command | Action |
 | :--- | :--- |
@@ -115,7 +115,7 @@
 
 ---
 
-## Settings Reference
+## ⚙️ Settings Reference
 
 - **UI Language:** Select interface language (**English** or **فارسی**).
 - **Show Floating Widget:** Enable or disable the floating note outline.
@@ -135,13 +135,17 @@
 
 ---
 
-## Changelog
+## 📅 Changelog
+
+### v1.2.2
+- **Robust Scroll Architecture:** Completely overhauled the scrolling engine with a robust retry mechanism (`scrollWithRetry`) that guarantees correct scroll position restoration.
+- **Smart Mode Switching:** Fixed the jump-to-top bug that occurred during the first mode switch between Live Preview and Reading View. The plugin now smartly detects Obsidian's native scroll state and intelligently steps in to restore the previous heading if Obsidian fails to sync properly due to unmounted DOM elements.
+- **Polished Default Settings:** Updated default settings to feature the 'Nord' transparent theme and 'Mini' default window mode.
 
 ### v1.2.1
 - **Popout Window Compatibility:** Standardized all frame scheduling calls to `window.requestAnimationFrame()` and `window.cancelAnimationFrame()`.
 - **CSS Quality Standards:** Eliminated all `!important` declarations by enhancing selector specificity in mobile responsive rules.
 - **Mobile Comfort Height:** Adjusted mobile floating card maximum height to 420px for balanced outline visibility and note reading.
-- **Settings Deprecation Cleanups:** Removed deprecated `setDynamicTooltip()` on slider components.
 
 ### v1.2.0
 - **Unified Auto-Scroll:** Synchronized auto-scroll state across the floating window, sidebar view, and command palette.
@@ -149,7 +153,6 @@
 - **Sub-Pixel Motion Engine:** Fixed scrolling in Reading View (`.markdown-preview-view`) and implemented sub-pixel accumulation for smooth movement at speeds below 30 px/s.
 - **Smart Deep Heading Navigation:** Added setting to jump to parent headings when navigating nested sections (H3+).
 - **Mobile Ergonomics:** Lowered floating widget position on mobile phones (`top: 88px`), reduced maximum card height, and disabled full-height expansion on mobile screens.
-- **Minimalist Aesthetic:** Removed drop shadows from floating cards and toggle pills.
 
 ### v1.1.11
 - **Heading Memory:** Remembers active reading heading per note across sessions.
@@ -176,13 +179,13 @@
 
 #### ویژگی‌های کلیدی:
 1. **پشتیبانی اصولی از متون فارسی و دوجهته (RTL/LTR):** چینش طبیعی و منظم سرتیترها با رعایت قواعد متون دوزبانه، اصطلاحات فنی و اعداد.
-2. **نوار ناوبری ۵ دکمه و اسکرول خودکار هماهنگ (نسخه ۱.۲.۰):**
+2. **نوار ناوبری ۵ دکمه و اسکرول خودکار هماهنگ:**
    - دسترسی سریع به سرتیتر قبلی، بخش قبلی، اسکرول خودکار در مرکز، بخش بعدی، و سرتیتر بعدی.
    - همگام‌سازی وضعیت اسکرول خودکار میان پنجره شناور و نوار کناری (Sidebar).
    - اسکرول پیوسته و روان با دقت زیرپیکسل در هر دو نمای مطالعه و ویرایش با امکان تنظیم سرعت از ۱۰ تا ۲۰۰ پیکسل بر ثانیه.
    - رفتار هوشمند پرش بین سرتیترها (رد شدن از زیربخش‌ها در H1/H2 و امکان هدایت به سرتیتر والد در تیترهای سطح ۳ به بالا).
    - بهینه‌سازی اختصاصی برای گوشی: قرارگیری در ارتفاع مناسب (`88px`) برای عدم تداخل با منوهای بالای گوشی، ارتفاع کوتاه‌تر کارت و حذف دکمه تمام‌صفحه در موبایل.
-3. **حافظه موقعیت مطالعه و هماهنگی تغییر نما:** ذخیره سرتیتر فعال هر یادداشت و حفظ دقیق موقعیت هنگام جابه‌جایی میان نمای ویرایش (Live Preview) و نمای مطالعه (Reading View).
+3. **حافظه هوشمند موقعیت مطالعه:** ذخیره سرتیتر فعال هر یادداشت و بازیابی بی‌نقص و دقیق آن در هنگام باز کردن مجدد فایل و یا جابجایی بین نمای ویرایش (Live Preview) و نمای مطالعه (Reading View).
 4. **حالت‌های نمایش انعطاف‌پذیر:** حالت دکمه کوچک شناور (Pill)، کارت شناور (Floating) و پنل تمام‌قد (Full-Height).
 5. **تم‌ها و سبک‌های بصری:** تم‌های دراکولا، نورد، سولارایزد، گرووباکس و پیش‌فرض با حالت‌های مات و شیشه‌ای.
 6. **امکانات ساختاری:** نوار درصد پیشرفت مطالعه با ارقام فارسی، فیلتر آنی سرتیترها و نشانگر بخش فعال.
@@ -192,6 +195,6 @@
 
 ---
 
-## License
+## 📜 License
 
 This project is licensed under the [MIT License](LICENSE).

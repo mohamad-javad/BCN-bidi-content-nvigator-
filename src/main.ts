@@ -377,96 +377,51 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
         if (prevMode && prevMode !== currentMode) {
           this.viewModeMap.set(view, currentMode);
           const filePath = file.path;
+          const headingBeforeSwitch = this.lastActiveHeadings.get(view);
 
           // Lock position saving immediately so transient 0-scroll events during mode switch don't overwrite the heading!
           this.restoringFiles.add(filePath);
 
-          const saved = this.settings.savedHeadingPositions?.[filePath];
-          const headingBeforeSwitch = this.lastActiveHeadings.get(view);
-          const targetLine = headingBeforeSwitch ? headingBeforeSwitch.position.start.line : (saved ? saved.line : 0);
-
-          // Allow the new mode DOM to mount, then assert target position using Obsidian's native ephemeralState
+          // Allow Obsidian's native scroll sync to complete
           window.setTimeout(() => {
-            if (!view.containerEl.isConnected || view.file?.path !== filePath) {
-              this.restoringFiles.delete(filePath);
-              return;
-            }
-
-            if (targetLine > 0) {
-              try {
-                view.setEphemeralState({ line: targetLine });
-              } catch {
-                // Ignore
-              }
-
-              if (view.getMode() === 'preview') {
-                const preview = view.previewMode;
-                try {
-                  const previewRenderer = (preview as unknown as { renderer?: { applyScrollDelayed?: (line: number) => void } })?.renderer;
-                  if (typeof previewRenderer?.applyScrollDelayed === 'function') {
-                    previewRenderer.applyScrollDelayed(targetLine);
-                  } else if (typeof (preview as unknown as { applyScroll?: (line: number) => void })?.applyScroll === 'function') {
-                    (preview as unknown as { applyScroll?: (line: number) => void }).applyScroll!(targetLine);
-                  }
-                } catch {
-                  // Ignore
-                }
-              } else {
-                const editor = view.editor;
-                if (editor) {
-                  try {
-                    editor.setCursor({ line: Math.min(targetLine, Math.max(0, editor.lineCount() - 1)), ch: 0 });
-                  } catch {
-                    // Ignore
-                  }
-                  const scroller = view.contentEl.querySelector<HTMLElement>('.cm-scroller');
-                  const cm = getCodeMirrorView(editor);
-                  if (scroller && cm?.state?.doc) {
-                    try {
-                      const line1 = Math.min(cm.state.doc.lines, Math.max(1, targetLine + 1));
-                      const block = cm.lineBlockAt ? cm.lineBlockAt(cm.state.doc.line(line1).from) : null;
-                      if (block) {
-                        scroller.scrollTo({ top: block.top, behavior: 'auto' });
-                      }
-                    } catch {
-                      // Ignore
-                    }
-                  }
-                }
-              }
-            }
-
             const cache = this.app.metadataCache.getFileCache(file);
             const headings = cache?.headings;
+            
             if (headings && headings.length > 0) {
-              const active = (headingBeforeSwitch && headings.some(h => h.position.start.line === headingBeforeSwitch.position.start.line))
-                ? headingBeforeSwitch
-                : (getActiveHeading(view, headings, 100) ?? headings[0]);
-
-              if (active) {
-                this.lastActiveHeadings.set(view, active);
-                this.saveHeadingPosition(filePath, active);
-
+              const activeNow = getActiveHeading(view, headings, 100);
+              
+              // If Obsidian's native sync failed (often happens on the *first* mode switch because the DOM isn't ready)
+              // it usually drops the user at the very top of the file (first heading).
+              // If we were deep in the file before, we detect this failure and intervene.
+              if (activeNow && headingBeforeSwitch && 
+                  activeNow.position.start.line === headings[0].position.start.line && 
+                  headingBeforeSwitch.position.start.line > headings[0].position.start.line + 3) {
+                  
+                  scrollWithRetry(view, headingBeforeSwitch, 'auto', () => {
+                     this.restoringFiles.delete(filePath);
+                     
+                     // Update UI
+                     this.lastActiveHeadings.set(view, headingBeforeSwitch);
+                     const widget = this.floatingWidgets.get(view);
+                     if (widget?.core) {
+                       widget.core.setActiveHeadingManually(headingBeforeSwitch);
+                     }
+                  });
+                  return; // Exit early, scrollWithRetry will handle the cleanup
+              }
+              
+              // If we get here, Obsidian succeeded natively (or we were already at the top).
+              if (activeNow) {
+                this.lastActiveHeadings.set(view, activeNow);
+                this.saveHeadingPosition(filePath, activeNow);
                 const widget = this.floatingWidgets.get(view);
                 if (widget?.core) {
-                  widget.core.setActiveHeadingManually(active);
-                }
-                const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
-                for (const sl of sidebarLeaves) {
-                  if (sl.view instanceof BidiFlowSidebarView && sl.view.core) {
-                    if (sl.view.core.getHeadingCount() === 0) {
-                      sl.view.core.setView(view);
-                    }
-                    sl.view.core.setActiveHeadingManually(active);
-                  }
+                  widget.core.setActiveHeadingManually(activeNow);
                 }
               }
             }
-
-            window.setTimeout(() => {
-              this.restoringFiles.delete(filePath);
-            }, 100);
-          }, 120);
+            this.restoringFiles.delete(filePath);
+          }, 350); // 350ms gives Obsidian enough time to attempt native sync
         } else if (!prevMode) {
           this.viewModeMap.set(view, currentMode);
         }
@@ -684,128 +639,48 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
     this.restoredFilesForViews.set(view, file.path);
     this.restoringFiles.add(file.path);
 
-    const tryRestore = (): boolean => {
-      if (!view.containerEl.isConnected || view.file?.path !== file.path) {
-        this.restoringFiles.delete(file.path);
-        return true;
+    const cache = this.app.metadataCache.getFileCache(file);
+    const headings = cache?.headings;
+    
+    // We only try to restore if there are headings to snap to, or fallback to line number
+    const targetHeading = (headings && headings.length > 0)
+      ? (this.findMatchingHeading(headings, saved)
+         ?? headings.find(h => h.position.start.line === saved.line)
+         ?? headings[0])
+      : null;
+
+    if (targetHeading) {
+      this.lastActiveHeadings.set(view, targetHeading);
+
+      const widget = this.floatingWidgets.get(view);
+      if (widget?.core) {
+        widget.core.setActiveHeadingManually(targetHeading);
       }
 
-      const targetLine = saved.line;
+      const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
+      for (const leaf of sidebarLeaves) {
+        if (leaf.view instanceof BidiFlowSidebarView && leaf.view.core) {
+          if (leaf.view.core.getHeadingCount() === 0) {
+            leaf.view.core.setView(view);
+          }
+          leaf.view.core.setActiveHeadingManually(targetHeading);
+        }
+      }
 
-      // Native Obsidian Ephemeral State scroll
+      scrollWithRetry(view, targetHeading, 'auto', () => {
+        this.restoringFiles.delete(file.path);
+      });
+    } else {
+      // If no headings, just attempt basic Obsidian ephemeral state
       try {
-        view.setEphemeralState({ line: targetLine });
+        view.setEphemeralState({ line: saved.line });
       } catch {
         // Ignore
       }
-
-      // 1. Instant line & cursor scroll (Fast Path)
-      if (view.getMode() === 'preview') {
-        const preview = view.previewMode;
-        if (preview) {
-          try {
-            const previewRenderer = (preview as unknown as { renderer?: { applyScrollDelayed?: (line: number) => void; applyScroll?: (line: number) => boolean } })?.renderer;
-            if (typeof previewRenderer?.applyScrollDelayed === 'function') {
-              previewRenderer.applyScrollDelayed(targetLine);
-            } else if (typeof (preview as unknown as { applyScroll?: (line: number) => void })?.applyScroll === 'function') {
-              (preview as unknown as { applyScroll?: (line: number) => void }).applyScroll!(targetLine);
-            }
-          } catch {
-            // Ignore
-          }
-        }
-      } else {
-        const editor = view.editor;
-        if (editor) {
-          const totalLines = editor.lineCount();
-          if (totalLines <= targetLine && totalLines < 5) {
-            // Editor content is still loading from disk asynchronously
-            return false;
-          }
-
-          const safeLine = Math.min(targetLine, Math.max(0, totalLines - 1));
-          try {
-            editor.setCursor({ line: safeLine, ch: 0 });
-          } catch {
-            // Ignore
-          }
-
-          const scroller = view.contentEl.querySelector<HTMLElement>('.cm-scroller');
-          if (scroller) {
-            const cm = getCodeMirrorView(editor);
-            if (cm?.state?.doc) {
-              try {
-                const line1 = Math.min(cm.state.doc.lines, Math.max(1, safeLine + 1));
-                const linePos = cm.state.doc.line(line1).from;
-                const block = cm.lineBlockAt ? cm.lineBlockAt(linePos) : null;
-                if (block) {
-                  scroller.scrollTo({ top: block.top, behavior: 'auto' });
-                }
-              } catch {
-                // Ignore
-              }
-            }
-          }
-
-          try {
-            editor.scrollIntoView({ from: { line: safeLine, ch: 0 }, to: { line: safeLine, ch: 0 } }, false);
-          } catch {
-            // Ignore
-          }
-        }
-      }
-
-      // 2. Metadata sync: Find matching heading for outline highlight
-      const cache = this.app.metadataCache.getFileCache(file);
-      const headings = cache?.headings;
-      if (headings && headings.length > 0) {
-        const targetHeading = this.findMatchingHeading(headings, saved)
-          ?? headings.find(h => h.position.start.line === targetLine)
-          ?? headings[0];
-
-        if (targetHeading) {
-          this.lastActiveHeadings.set(view, targetHeading);
-
-          const widget = this.floatingWidgets.get(view);
-          if (widget?.core) {
-            widget.core.setActiveHeadingManually(targetHeading);
-          }
-
-          const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
-          for (const leaf of sidebarLeaves) {
-            if (leaf.view instanceof BidiFlowSidebarView && leaf.view.core) {
-              if (leaf.view.core.getHeadingCount() === 0) {
-                leaf.view.core.setView(view);
-              }
-              leaf.view.core.setActiveHeadingManually(targetHeading);
-            }
-          }
-        }
-      }
-
       window.setTimeout(() => {
         this.restoringFiles.delete(file.path);
-      }, 150);
-
-      return true;
-    };
-
-    if (tryRestore()) {
-      return;
+      }, 500);
     }
-
-    let attempts = 0;
-    const interval = window.setInterval(() => {
-      attempts++;
-      if (tryRestore() || attempts >= 25) {
-        window.clearInterval(interval);
-        this.restoreIntervals.delete(interval);
-        if (attempts >= 25) {
-          this.restoringFiles.delete(file.path);
-        }
-      }
-    }, 40);
-    this.restoreIntervals.add(interval);
   }
 
   onunload() {

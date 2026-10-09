@@ -289,7 +289,6 @@ export function scrollToHeadingInSourceMode(
   }
 
   // 2. Direct CodeMirror 6 scroll on cm-scroller for immediate, guaranteed top positioning
-  let scrolled = false;
   const scroller = view.contentEl.querySelector<HTMLElement>('.cm-scroller');
   if (scroller) {
     const cm = getCodeMirrorView(editor);
@@ -300,41 +299,25 @@ export function scrollToHeadingInSourceMode(
         const block = cm.lineBlockAt ? cm.lineBlockAt(linePos) : null;
         if (block) {
           scroller.scrollTo({ top: block.top, behavior });
-          scrolled = true;
+          return true; // We successfully found the block and scrolled to it
         }
       } catch {
-        // Fallback below
+        // Ignore
       }
     }
   }
 
-  // 3. Fallback: Obsidian native subView applyScroll
-  if (!scrolled) {
-    try {
-      const subView = (view as unknown as { currentMode?: MarkdownSubView; editMode?: MarkdownSubView }).currentMode ??
-                      (view as unknown as { editMode?: MarkdownSubView }).editMode;
-      if (typeof subView?.applyScroll === 'function') {
-        subView.applyScroll(targetLine);
-        scrolled = true;
-      }
-    } catch {
-      // Ignore
-    }
+  // 3. Fallback: editor scrollIntoView (we still try it, but we return false to keep retrying until block is ready)
+  try {
+    editor.scrollIntoView(
+      { from: { line: targetLine, ch: 0 }, to: { line: targetLine, ch: 0 } },
+      false
+    );
+  } catch {
+    // Ignore
   }
-
-  // 4. Fallback: editor scrollIntoView
-  if (!scrolled) {
-    try {
-      editor.scrollIntoView(
-        { from: { line: targetLine, ch: 0 }, to: { line: targetLine, ch: 0 } },
-        false
-      );
-    } catch {
-      // Ignore
-    }
-  }
-
-  return true;
+  
+  return false;
 }
 
 /**
@@ -348,6 +331,9 @@ export function scrollToHeadingInReadingView(
   const targetLine = heading.position.start.line;
   const preview = view.previewMode;
   const container = preview?.containerEl;
+  
+  if (!container) return false;
+
   const findTargetEl = (): HTMLHeadingElement | undefined => {
     const headingEls = Array.from(
       container.querySelectorAll<HTMLHeadingElement>('h1, h2, h3, h4, h5, h6')
@@ -371,35 +357,20 @@ export function scrollToHeadingInReadingView(
     return true;
   }
 
-  // Ensure preview.applyScroll is also called for accurate virtual positioning
-  let applied = false;
+  // If DOM is not ready, we apply scroll blindly to Obsidian just in case it handles it later,
+  // but we STILL return false so our retry loop keeps waiting for the DOM element to appear.
   try {
     const previewRenderer = (preview as unknown as { renderer?: { applyScrollDelayed?: (line: number) => void; applyScroll?: (line: number) => boolean } })?.renderer;
     if (typeof previewRenderer?.applyScrollDelayed === 'function') {
       previewRenderer.applyScrollDelayed(targetLine);
-      applied = true;
     } else {
       const previewScroll = preview as unknown as MarkdownPreviewViewWithScroll;
       if (typeof previewScroll.applyScroll === 'function') {
         previewScroll.applyScroll(targetLine);
-        applied = true;
       }
     }
   } catch {
     // Ignore
-  }
-
-  // Once virtual preview renders the DOM elements, fine-tune position directly to the heading element
-  // to avoid line-estimation offset drift between edit and reading view
-  if (applied) {
-    window.setTimeout(() => {
-      if (!view.containerEl.isConnected) return;
-      const delayedEl = findTargetEl();
-      if (delayedEl) {
-        delayedEl.scrollIntoView({ behavior: 'auto', block: 'start' });
-      }
-    }, 120);
-    return true;
   }
 
   return false;
@@ -444,9 +415,9 @@ export function scrollWithRetry(
 
   const interval = window.setInterval(() => {
     attempts++;
-    if (tryScroll() || attempts >= 25) {
+    if (tryScroll() || attempts >= 50) {
       window.clearInterval(interval);
-      if (attempts >= 25) {
+      if (attempts >= 50) {
         onSuccess?.();
       }
     }
