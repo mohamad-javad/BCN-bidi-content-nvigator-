@@ -22,6 +22,7 @@ export class BidiFlowNavigatorCore extends Component {
   // Header Elements
   private headerEl!: HTMLElement;
   private topBarEl?: HTMLElement;
+  private dragHandleEl?: HTMLElement;
   private modeToggleBtn?: HTMLButtonElement;
   private collapseBtn?: HTMLButtonElement;
   private prevBtnEl!: HTMLButtonElement;
@@ -169,6 +170,14 @@ export class BidiFlowNavigatorCore extends Component {
     const brandIcon = brandEl.createSpan({ cls: 'bidi-flow-brand-icon' });
     setIcon(brandIcon, 'compass');
     brandEl.createSpan({ cls: 'bidi-flow-brand-text', text: tr.brand });
+
+    // Drag Handle Notch (centered between brand and window controls)
+    this.dragHandleEl = this.topBarEl.createDiv({
+      cls: 'bidi-flow-drag-handle',
+      attr: { 'aria-label': tr.dragHandle }
+    });
+    this.dragHandleEl.createSpan({ cls: 'bidi-flow-drag-notch' });
+    setTooltip(this.dragHandleEl, tr.dragHandle);
 
     const windowControlsEl = this.topBarEl.createDiv({ cls: 'bidi-flow-window-controls' });
     this.modeToggleBtn = windowControlsEl.createEl('button', {
@@ -1278,10 +1287,38 @@ export class BidiFlowNavigatorCore extends Component {
     }
   }
 
+  public scrollPage(direction: 'down' | 'up'): void {
+    const view = this.getActiveMarkdownView();
+    if (!view) return;
+    this.stopAutoScroll();
+
+    const scrollContainer = this.getScrollContainer(view);
+    if (scrollContainer && scrollContainer.clientHeight > 50) {
+      const pageDelta = Math.round(scrollContainer.clientHeight * 0.85);
+      scrollContainer.scrollBy({
+        top: direction === 'down' ? pageDelta : -pageDelta,
+        behavior: 'smooth',
+      });
+    } else {
+      const currentLine = this.getCurrentScrollLine();
+      const pageSize = this.getPageSizeInLines();
+      const totalLines = view.editor ? view.editor.lineCount() : 1000;
+      const targetLine = direction === 'down'
+        ? Math.min(totalLines - 1, Math.round(currentLine + pageSize))
+        : Math.max(0, Math.round(currentLine - pageSize));
+      this.scrollToLine(targetLine);
+    }
+  }
+
   public jumpNextPart(): void {
     const view = this.getActiveMarkdownView();
     if (!view) return;
     this.stopAutoScroll();
+
+    if (this.settings.nextPartPageScroll) {
+      this.scrollPage('down');
+      return;
+    }
 
     const currentLine = this.getCurrentScrollLine();
     const pageSize = this.getPageSizeInLines();
@@ -1310,6 +1347,11 @@ export class BidiFlowNavigatorCore extends Component {
     const view = this.getActiveMarkdownView();
     if (!view) return;
     this.stopAutoScroll();
+
+    if (this.settings.nextPartPageScroll) {
+      this.scrollPage('up');
+      return;
+    }
 
     const currentLine = this.getCurrentScrollLine();
     const pageSize = this.getPageSizeInLines();
@@ -1483,6 +1525,10 @@ export class BidiFlowNavigatorCore extends Component {
     if (this.modeToggleBtn) {
       this.modeToggleBtn.hide();
     }
+  }
+
+  public getDragHandleEl(): HTMLElement | undefined {
+    return this.dragHandleEl;
   }
 
   public clear(): void {

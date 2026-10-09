@@ -15,16 +15,23 @@ export class BidiFlowFloatingWidget extends Component {
   // 3-Mode State ('mini' | 'floating' | 'full-height')
   private currentMode: NavigatorDisplayMode;
   private previousExpandedMode: 'floating' | 'full-height' = 'floating';
+  private floatingTopPx: number;
+  private onPositionChange?: (topPx: number) => void;
 
   constructor(
     view: MarkdownView,
     settings: BidiFlowSettings,
-    onHeadingChange?: (heading: HeadingCache) => void
+    onHeadingChange?: (heading: HeadingCache) => void,
+    onPositionChange?: (topPx: number) => void
   ) {
     super();
     this.view = view;
     this.settings = settings;
     this.onHeadingChange = onHeadingChange;
+    this.onPositionChange = onPositionChange;
+    this.floatingTopPx = typeof settings.floatingTopPx === 'number'
+      ? settings.floatingTopPx
+      : (Platform.isMobile ? 88 : 48);
     this.currentMode = (Platform.isMobile && settings.defaultMode === 'full-height') ? 'floating' : (settings.defaultMode || 'floating');
     if (this.currentMode !== 'mini') {
       this.previousExpandedMode = this.currentMode;
@@ -94,6 +101,78 @@ export class BidiFlowFloatingWidget extends Component {
     }
 
     this.core.setView(this.view);
+
+    if (this.currentMode === 'floating' && this.floatingTopPx != null) {
+      this.hostContainerEl.style.top = `${this.floatingTopPx}px`;
+    } else {
+      this.hostContainerEl.style.top = '';
+    }
+
+    this.initVerticalDrag();
+  }
+
+  private initVerticalDrag(): void {
+    const handleEl = this.core?.getDragHandleEl();
+    if (!handleEl) return;
+
+    let startY = 0;
+    let initialTop = 0;
+    let isDragging = false;
+
+    handleEl.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      if (this.currentMode === 'full-height') return;
+
+      startY = e.clientY;
+      const computedTop = parseFloat(window.getComputedStyle(this.hostContainerEl).top);
+      initialTop = !isNaN(computedTop) ? computedTop : this.hostContainerEl.offsetTop;
+
+      isDragging = true;
+      try {
+        handleEl.setPointerCapture(e.pointerId);
+      } catch {}
+      handleEl.addClass('is-dragging');
+      this.hostContainerEl.addClass('is-dragging');
+      document.body.addClass('bidi-flow-is-dragging');
+      e.stopPropagation();
+    });
+
+    handleEl.addEventListener('pointermove', (e: PointerEvent) => {
+      if (!isDragging) return;
+      e.stopPropagation();
+
+      const deltaY = e.clientY - startY;
+      const parent = this.view.contentEl;
+      const parentHeight = parent ? parent.clientHeight : window.innerHeight;
+      const cardHeight = this.cardEl ? this.cardEl.offsetHeight : 300;
+
+      const minTop = 15;
+      const maxTop = Math.max(minTop, parentHeight - Math.min(cardHeight, 90));
+
+      const newTop = Math.min(Math.max(minTop, Math.round(initialTop + deltaY)), maxTop);
+      this.hostContainerEl.style.top = `${newTop}px`;
+      this.floatingTopPx = newTop;
+    });
+
+    const onPointerUp = (e: PointerEvent) => {
+      if (!isDragging) return;
+      isDragging = false;
+      try {
+        handleEl.releasePointerCapture(e.pointerId);
+      } catch {}
+      handleEl.removeClass('is-dragging');
+      this.hostContainerEl.removeClass('is-dragging');
+      document.body.removeClass('bidi-flow-is-dragging');
+      e.stopPropagation();
+
+      if (typeof this.floatingTopPx === 'number') {
+        this.settings.floatingTopPx = this.floatingTopPx;
+        this.onPositionChange?.(this.floatingTopPx);
+      }
+    };
+
+    handleEl.addEventListener('pointerup', onPointerUp);
+    handleEl.addEventListener('pointercancel', onPointerUp);
   }
 
   public setMode(mode: NavigatorDisplayMode): void {
@@ -115,6 +194,12 @@ export class BidiFlowFloatingWidget extends Component {
 
     if (mode === 'mini') {
       this.hostContainerEl.addClass('is-collapsed');
+    }
+
+    if (mode === 'floating' && this.floatingTopPx != null) {
+      this.hostContainerEl.style.top = `${this.floatingTopPx}px`;
+    } else {
+      this.hostContainerEl.style.top = '';
     }
 
     this.core?.updateWindowControls(mode);
@@ -178,6 +263,12 @@ export class BidiFlowFloatingWidget extends Component {
       const tr = t(settings.uiLanguage);
       this.toggleBtnEl.setAttribute('aria-label', tr.viewTitle);
       setTooltip(this.toggleBtnEl, tr.toggleNavigator);
+    }
+    if (typeof settings.floatingTopPx === 'number' && settings.floatingTopPx !== this.floatingTopPx) {
+      this.floatingTopPx = settings.floatingTopPx;
+      if (this.currentMode === 'floating' && this.hostContainerEl) {
+        this.hostContainerEl.style.top = `${this.floatingTopPx}px`;
+      }
     }
     this.core?.updateSettings(settings);
   }

@@ -36,6 +36,63 @@
   justify-content: space-between;
   padding: 0 0 4px;
   border-bottom: 1px solid var(--background-modifier-border);
+  gap: 6px;
+  position: relative;
+}
+
+/* Vertical Drag Notch (iPhone Sheet Notch / Grab Bar) */
+.bidi-flow-drag-handle {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  padding: 0 4px;
+}
+
+.bidi-flow-drag-handle:active,
+.bidi-flow-drag-handle.is-dragging {
+  cursor: grabbing;
+}
+
+.bidi-flow-drag-notch {
+  width: 32px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--text-faint);
+  opacity: 0.55;
+  transition: opacity 0.15s ease, background-color 0.15s ease, width 0.15s ease;
+  pointer-events: none;
+}
+
+.bidi-flow-drag-handle:hover .bidi-flow-drag-notch {
+  opacity: 0.95;
+  background-color: var(--text-muted);
+  width: 38px;
+}
+
+.bidi-flow-drag-handle.is-dragging .bidi-flow-drag-notch {
+  opacity: 1;
+  background-color: var(--interactive-accent);
+  width: 42px;
+}
+
+.bidi-floating-navigator.is-mode-full-height .bidi-flow-drag-handle {
+  cursor: default;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.bidi-floating-navigator.is-dragging {
+  transition: none !important;
+}
+
+body.bidi-flow-is-dragging {
+  user-select: none !important;
+  cursor: ns-resize !important;
 }
 
 .bidi-flow-brand {
@@ -1076,3 +1133,129 @@ body.is-mobile .bidi-floating-navigator .bidi-flow-top-bar .bidi-flow-window-con
   box-shadow: none;
 }
 
+
+/* ==========================================================================
+   Settings Tab: RTL Layout for Persian (Fa) Mode
+   Moves labels/descriptions to the right and controls (checkboxes,
+   toggles, dropdowns, sliders) to the left of the screen.
+   ========================================================================== */
+
+.bidi-flow-settings-rtl,
+.vertical-tab-content.bidi-flow-settings-rtl,
+.vertical-tab-content[dir="rtl"] {
+  direction: rtl !important;
+  text-align: right !important;
+  font-family: var(--font-interface), "Vazirmatn", "Shabnam", "Sahel", "IRANSans", system-ui, -apple-system, sans-serif;
+}
+
+.bidi-flow-settings-rtl .setting-item,
+.vertical-tab-content.bidi-flow-settings-rtl .setting-item,
+.vertical-tab-content[dir="rtl"] .setting-item {
+  direction: rtl !important;
+  text-align: right !important;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+
+.bidi-flow-settings-rtl .setting-item-info,
+.vertical-tab-content.bidi-flow-settings-rtl .setting-item-info,
+.vertical-tab-content[dir="rtl"] .setting-item-info {
+  direction: rtl !important;
+  text-align: right !important;
+  margin-right: 0 !important;
+  margin-left: 24px !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+.bidi-flow-settings-rtl .setting-item-name,
+.vertical-tab-content.bidi-flow-settings-rtl .setting-item-name,
+.vertical-tab-content[dir="rtl"] .setting-item-name {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.bidi-flow-settings-rtl .setting-item-description,
+.vertical-tab-content.bidi-flow-settings-rtl .setting-item-description,
+.vertical-tab-content[dir="rtl"] .setting-item-description {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.bidi-flow-settings-rtl .setting-item-heading,
+.vertical-tab-content.bidi-flow-settings-rtl .setting-item-heading,
+.vertical-tab-content[dir="rtl"] .setting-item-heading {
+  direction: rtl !important;
+  text-align: right !important;
+  flex-direction: row !important;
+}
+
+.bidi-flow-settings-rtl .setting-item-heading .setting-item-info,
+.vertical-tab-content.bidi-flow-settings-rtl .setting-item-heading .setting-item-info,
+.vertical-tab-content[dir="rtl"] .setting-item-heading .setting-item-info {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.bidi-flow-settings-rtl .setting-item-heading .setting-item-name,
+.vertical-tab-content.bidi-flow-settings-rtl .setting-item-heading .setting-item-name,
+.vertical-tab-content[dir="rtl"] .setting-item-heading .setting-item-name {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.bidi-flow-settings-rtl .setting-item-control,
+.vertical-tab-content.bidi-flow-settings-rtl .setting-item-control,
+.vertical-tab-content[dir="rtl"] .setting-item-control {
+  direction: ltr !important;
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  flex: 0 0 auto !important;
+  gap: 8px !important;
+}
+
+.bidi-flow-settings-rtl select.dropdown,
+.vertical-tab-content.bidi-flow-settings-rtl select.dropdown,
+.vertical-tab-content[dir="rtl"] select.dropdown {
+  direction: rtl !important;
+  text-align: right !important;
+  text-align-last: right !important;
+}
+
+.bidi-flow-settings-rtl select.dropdown option,
+.vertical-tab-content.bidi-flow-settings-rtl select.dropdown option,
+.vertical-tab-content[dir="rtl"] select.dropdown option {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.bidi-flow-settings-rtl input[type="text"],
+.bidi-flow-settings-rtl input[type="search"],
+.vertical-tab-content.bidi-flow-settings-rtl input[type="text"],
+.vertical-tab-content[dir="rtl"] input[type="text"] {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.bidi-flow-settings-rtl .checkbox-container,
+.vertical-tab-content.bidi-flow-settings-rtl .checkbox-container,
+.vertical-tab-content[dir="rtl"] .checkbox-container {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.bidi-flow-settings-rtl .slider-container,
+.bidi-flow-settings-rtl input[type="range"].slider,
+.vertical-tab-content.bidi-flow-settings-rtl input[type="range"].slider,
+.vertical-tab-content[dir="rtl"] input[type="range"].slider {
+  direction: rtl !important;
+  --inset-end: left !important;
+  --inset-start: right !important;
+  background-image: linear-gradient(to left, var(--slider-fill-background, var(--interactive-accent)) var(--slider-fill-position), var(--slider-track-background) var(--slider-fill-position)) !important;
+}

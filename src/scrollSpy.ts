@@ -333,7 +333,7 @@ export function scrollToHeadingInReadingView(
     container.querySelectorAll<HTMLHeadingElement>('h1, h2, h3, h4, h5, h6')
   );
   const cleanTarget = cleanHeadingText(heading.heading);
-  const targetEl = headingEls.find(el => {
+  const allMatchingEls = headingEls.filter(el => {
     const dataH = el.getAttribute('data-heading');
     const textH = el.textContent?.trim();
     return (
@@ -343,6 +343,21 @@ export function scrollToHeadingInReadingView(
       (textH && cleanHeadingText(textH) === cleanTarget)
     );
   });
+
+  let targetEl: HTMLHeadingElement | undefined;
+  if (allMatchingEls.length > 1 && view.file) {
+    const cache = view.app.metadataCache.getFileCache(view.file);
+    const docHeadings = cache?.headings ?? [];
+    const sameNameHeadings = docHeadings.filter(h => cleanHeadingText(h.heading) === cleanTarget);
+    const occurrenceIndex = sameNameHeadings.findIndex(h => h.position.start.line === heading.position.start.line);
+    if (occurrenceIndex >= 0 && occurrenceIndex < allMatchingEls.length) {
+      targetEl = allMatchingEls[occurrenceIndex];
+    } else {
+      targetEl = allMatchingEls[0];
+    }
+  } else {
+    targetEl = allMatchingEls[0];
+  }
 
   if (targetEl) {
     targetEl.scrollIntoView({ behavior, block: 'start' });

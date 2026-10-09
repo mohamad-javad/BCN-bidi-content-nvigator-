@@ -353,6 +353,9 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
               this.lastActiveHeadings.set(view, heading);
               this.saveHeadingPosition(view.file.path, heading);
             }
+          }, (topPx) => {
+            this.settings.floatingTopPx = topPx;
+            this.triggerDebouncedSaveSettings();
           });
           view.addChild(widget);
           this.floatingWidgets.set(view, widget);
@@ -377,51 +380,47 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
         if (prevMode && prevMode !== currentMode) {
           this.viewModeMap.set(view, currentMode);
           const filePath = file.path;
-          const headingBeforeSwitch = this.lastActiveHeadings.get(view);
 
           // Lock position saving immediately so transient 0-scroll events during mode switch don't overwrite the heading!
           this.restoringFiles.add(filePath);
 
-          // Allow Obsidian's native scroll sync to complete
-          window.setTimeout(() => {
-            const cache = this.app.metadataCache.getFileCache(file);
-            const headings = cache?.headings;
-            
-            if (headings && headings.length > 0) {
-              const activeNow = getActiveHeading(view, headings, 100);
-              
-              // If Obsidian's native sync failed (often happens on the *first* mode switch because the DOM isn't ready)
-              // it usually drops the user at the very top of the file (first heading).
-              // If we were deep in the file before, we detect this failure and intervene.
-              if (activeNow && headingBeforeSwitch && 
-                  activeNow.position.start.line === headings[0].position.start.line && 
-                  headingBeforeSwitch.position.start.line > headings[0].position.start.line + 3) {
-                  
-                  scrollWithRetry(view, headingBeforeSwitch, 'auto', () => {
-                     this.restoringFiles.delete(filePath);
-                     
-                     // Update UI
-                     this.lastActiveHeadings.set(view, headingBeforeSwitch);
-                     const widget = this.floatingWidgets.get(view);
-                     if (widget?.core) {
-                       widget.core.setActiveHeadingManually(headingBeforeSwitch);
-                     }
-                  });
-                  return; // Exit early, scrollWithRetry will handle the cleanup
-              }
-              
-              // If we get here, Obsidian succeeded natively (or we were already at the top).
-              if (activeNow) {
-                this.lastActiveHeadings.set(view, activeNow);
-                this.saveHeadingPosition(filePath, activeNow);
-                const widget = this.floatingWidgets.get(view);
-                if (widget?.core) {
-                  widget.core.setActiveHeadingManually(activeNow);
+          const cache = this.app.metadataCache.getFileCache(file);
+          const headings = cache?.headings;
+          if (!headings || headings.length === 0) {
+            window.setTimeout(() => this.restoringFiles.delete(filePath), 400);
+            continue;
+          }
+
+          const lastActive = this.lastActiveHeadings.get(view);
+          const saved = this.settings.savedHeadingPositions?.[filePath];
+          const targetHeading = (lastActive && headings.some(h => h.heading === lastActive.heading && h.position.start.line === lastActive.position.start.line))
+            ? lastActive
+            : (saved ? this.findMatchingHeading(headings, saved) : headings[0]);
+
+          if (!targetHeading) {
+            window.setTimeout(() => this.restoringFiles.delete(filePath), 400);
+            continue;
+          }
+
+          scrollWithRetry(view, targetHeading, 'auto', () => {
+            const widget = this.floatingWidgets.get(view);
+            if (widget?.core) {
+              widget.core.setActiveHeadingManually(targetHeading);
+            }
+            const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
+            for (const sl of sidebarLeaves) {
+              if (sl.view instanceof BidiFlowSidebarView && sl.view.core) {
+                if (sl.view.core.getHeadingCount() === 0) {
+                  sl.view.core.setView(view);
                 }
+                sl.view.core.setActiveHeadingManually(targetHeading);
               }
             }
-            this.restoringFiles.delete(filePath);
-          }, 350); // 350ms gives Obsidian enough time to attempt native sync
+            this.lastActiveHeadings.set(view, targetHeading);
+            window.setTimeout(() => {
+              this.restoringFiles.delete(filePath);
+            }, 300);
+          });
         } else if (!prevMode) {
           this.viewModeMap.set(view, currentMode);
         }

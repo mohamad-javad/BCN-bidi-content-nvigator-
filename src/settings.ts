@@ -9,6 +9,9 @@ export class BidiFlowSettingTab extends PluginSettingTab {
   constructor(app: App, plugin: BidiFlowNavigatorPlugin) {
     super(app, plugin);
     this.plugin = plugin;
+    const isFa = this.plugin.settings.uiLanguage === 'fa';
+    this.containerEl.toggleClass('bidi-flow-settings-rtl', isFa);
+    this.containerEl.setAttribute('dir', isFa ? 'rtl' : 'ltr');
   }
 
 
@@ -20,6 +23,10 @@ export class BidiFlowSettingTab extends PluginSettingTab {
    * renderSettings() serves the traditional imperative display() call.
    */
   public override getSettingDefinitions(): SettingDefinitionItem[] {
+    const isFa = this.plugin.settings.uiLanguage === 'fa';
+    this.containerEl.toggleClass('bidi-flow-settings-rtl', isFa);
+    this.containerEl.setAttribute('dir', isFa ? 'rtl' : 'ltr');
+
     const tr = t(this.plugin.settings.uiLanguage);
 
     return [
@@ -284,6 +291,10 @@ export class BidiFlowSettingTab extends PluginSettingTab {
   private renderSettings(): void {
     const { containerEl } = this;
     containerEl.empty();
+
+    const isFa = this.plugin.settings.uiLanguage === 'fa';
+    containerEl.toggleClass('bidi-flow-settings-rtl', isFa);
+    containerEl.setAttribute('dir', isFa ? 'rtl' : 'ltr');
 
     const tr = t(this.plugin.settings.uiLanguage);
 
