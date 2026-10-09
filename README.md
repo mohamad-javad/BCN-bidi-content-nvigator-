@@ -2,7 +2,7 @@
 
 [![Obsidian Plugin](https://img.shields.io/badge/Obsidian-Plugin-7C3AED?logo=obsidian&logoColor=white)](https://obsidian.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Latest Release](https://img.shields.io/badge/release-v1.2.2-emerald.svg)](https://github.com/mohamad-javad/BCN-bidi-content-nvigator-/releases)
+[![Latest Release](https://img.shields.io/badge/release-v1.2.3-emerald.svg)](https://github.com/mohamad-javad/BCN-bidi-content-nvigator-/releases)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
 **BiDi Flow Navigator** is a highly polished document outline and navigation plugin for [Obsidian](https://obsidian.md). Specifically built to handle **Bidirectional (BiDi) text (Persian, Arabic, and mixed RTL/LTR)** flawlessly, it provides heading tracking, section jumping, reading progress calculation, precise scroll memory across mode switches, customizable themes, and synchronized auto-scrolling across devices.
@@ -137,7 +137,7 @@
 
 ## 📅 Changelog
 
-### v1.2.2
+### v1.2.3
 - **Robust Scroll Architecture:** Completely overhauled the scrolling engine with a robust retry mechanism (`scrollWithRetry`) that guarantees correct scroll position restoration.
 - **Smart Mode Switching:** Fixed the jump-to-top bug that occurred during the first mode switch between Live Preview and Reading View. The plugin now smartly detects Obsidian's native scroll state and intelligently steps in to restore the previous heading if Obsidian fails to sync properly due to unmounted DOM elements.
 - **Polished Default Settings:** Updated default settings to feature the 'Nord' transparent theme and 'Mini' default window mode.
