@@ -1,0 +1,1261 @@
+/* ==========================================================================
+   BiDi Flow Navigator — Sleek Bidirectional Document Navigator for Obsidian
+   ========================================================================== */
+
+/* Root Typography and BiDi Variables */
+.bidi-flow-navigator {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  font-family: var(--font-interface), 'Vazirmatn', 'Shabnam', 'Sahel', 'IRANSans', system-ui, -apple-system, sans-serif;
+  color: var(--text-normal);
+  background: var(--background-primary);
+  font-size: var(--font-ui-smaller, 12px);
+  user-select: none;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   Header Bar: Controls, Current Section & Progress
+   ========================================================================== */
+
+.bidi-flow-header {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 10px 6px;
+  background-color: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  gap: 6px;
+}
+
+/* Top Branding & Mode Control Bar */
+.bidi-flow-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 4px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  gap: 6px;
+  position: relative;
+}
+
+/* Vertical Drag Notch (iPhone Sheet Notch / Grab Bar) */
+.bidi-flow-drag-handle {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  padding: 0 4px;
+}
+
+.bidi-flow-drag-handle:active,
+.bidi-flow-drag-handle.is-dragging {
+  cursor: grabbing;
+}
+
+.bidi-flow-drag-notch {
+  width: 32px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--text-faint);
+  opacity: 0.55;
+  transition: opacity 0.15s ease, background-color 0.15s ease, width 0.15s ease;
+  pointer-events: none;
+}
+
+.bidi-flow-drag-handle:hover .bidi-flow-drag-notch {
+  opacity: 0.95;
+  background-color: var(--text-muted);
+  width: 38px;
+}
+
+.bidi-flow-drag-handle.is-dragging .bidi-flow-drag-notch {
+  opacity: 1;
+  background-color: var(--interactive-accent);
+  width: 42px;
+}
+
+.bidi-floating-navigator.is-mode-full-height .bidi-flow-drag-handle {
+  cursor: default;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.bidi-floating-navigator.is-dragging {
+  transition: none !important;
+}
+
+body.bidi-flow-is-dragging {
+  user-select: none !important;
+  cursor: ns-resize !important;
+}
+
+.bidi-flow-brand {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-accent);
+  letter-spacing: -0.01em;
+}
+
+.bidi-flow-brand-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--interactive-accent);
+}
+
+.bidi-flow-brand-icon svg {
+  width: 13px;
+  height: 13px;
+}
+
+.bidi-flow-window-controls {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.bidi-flow-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  padding: 0;
+  border-radius: var(--radius-s);
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bidi-flow-btn:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border);
+  transform: translateY(-1px);
+}
+
+.bidi-flow-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.bidi-flow-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+/* Section Jump Buttons (Prev / Next) */
+.bidi-flow-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.bidi-flow-nav-btn:hover:not(.is-disabled) {
+  background-color: var(--background-modifier-hover);
+  color: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  transform: translateY(-1px);
+}
+
+.bidi-flow-nav-btn.is-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Current Section Badge */
+.bidi-flow-current-badge {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.bidi-flow-badge-level {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: var(--radius-s);
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  line-height: 1.2;
+}
+
+.bidi-flow-current-title {
+  flex: 1;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-normal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: start;
+  line-height: 1.3;
+}
+
+.bidi-flow-counter {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+/* Reading Progress Bar */
+.bidi-flow-progress-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.bidi-flow-progress-track {
+  flex: 1;
+  height: 4px;
+  background-color: var(--background-modifier-border);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.bidi-flow-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--interactive-accent), var(--text-accent-hover));
+  border-radius: 999px;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bidi-flow-progress-text {
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  min-width: 28px;
+  text-align: end;
+}
+
+/* ==========================================================================
+   Search / Filter Bar
+   ========================================================================== */
+
+.bidi-flow-search-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background-color: var(--bidi-bg-alt, var(--background-secondary-alt));
+  border-bottom: 1px solid var(--bidi-border, var(--background-modifier-border));
+}
+
+.bidi-flow-collapse-all-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  color: var(--bidi-text-muted, var(--text-faint));
+  cursor: pointer;
+  border-radius: var(--radius-s);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.bidi-flow-collapse-all-btn:hover:not(.is-disabled) {
+  color: var(--bidi-text, var(--text-normal));
+  background-color: var(--background-modifier-hover);
+}
+
+.bidi-flow-collapse-all-btn.is-disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+.bidi-flow-collapse-all-btn svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2;
+}
+
+.bidi-flow-search-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bidi-text-muted, var(--text-faint));
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.bidi-flow-search-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.bidi-flow-search-input {
+  flex: 1;
+  border: 1px solid var(--bidi-border, var(--background-modifier-border));
+  border-radius: var(--radius-s);
+  background: var(--bidi-bg, var(--background-primary));
+  padding: 3px 6px;
+  font-size: 11.5px;
+  color: var(--bidi-text, var(--text-normal));
+  font-family: inherit;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.bidi-flow-search-input:focus {
+  outline: none;
+  border-color: var(--bidi-accent, var(--interactive-accent));
+}
+
+.bidi-flow-search-input::placeholder {
+  color: var(--bidi-text-muted, var(--text-faint));
+}
+
+.bidi-flow-search-clear {
+  color: var(--bidi-text-muted, var(--text-faint));
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: var(--radius-s);
+  flex-shrink: 0;
+}
+
+.bidi-flow-search-clear:hover {
+  color: var(--bidi-text, var(--text-normal));
+  background-color: var(--background-modifier-hover);
+}
+
+.bidi-flow-navigator[data-doc-dir="rtl"] .bidi-flow-search-box {
+  flex-direction: row-reverse;
+}
+
+.bidi-flow-navigator[data-doc-dir="rtl"] .bidi-flow-search-input {
+  text-align: right;
+  direction: rtl;
+}
+
+.bidi-flow-navigator[data-doc-dir="ltr"] .bidi-flow-search-input {
+  text-align: left;
+  direction: ltr;
+}
+
+/* ==========================================================================
+   Heading Tree Container & Nodes (Native Obsidian Tree Architecture)
+   ========================================================================== */
+
+.bidi-flow-tree-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 6px 8px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  box-sizing: border-box;
+  overscroll-behavior: contain;
+}
+
+/* Tree Item - Hierarchical Node */
+.bidi-flow-tree-item.tree-item {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+}
+
+/* Tree Item Self - Clickable Row */
+.bidi-flow-tree-row.tree-item-self,
+.bidi-flow-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+  min-height: 26px;
+  box-sizing: border-box;
+  color: var(--nav-item-color, var(--text-muted));
+  user-select: none;
+  width: 100%;
+}
+
+.bidi-flow-tree-row.tree-item-self:hover,
+.bidi-flow-tree-node:hover {
+  background-color: var(--nav-item-background-hover, var(--background-modifier-hover));
+  color: var(--nav-item-color-hover, var(--text-normal));
+}
+
+/* Active Heading Highlight (Matches Native Obsidian outline active pill) */
+.bidi-flow-tree-row.tree-item-self.is-active,
+.bidi-flow-tree-node.is-active {
+  background-color: var(--nav-item-background-active, var(--background-modifier-active-hover));
+  color: var(--nav-item-color-active, var(--text-normal));
+  font-weight: var(--nav-item-weight-active, 600);
+}
+
+.bidi-flow-tree-row.tree-item-self.is-active .bidi-flow-node-title,
+.bidi-flow-tree-node.is-active .bidi-flow-node-title {
+  color: var(--nav-item-color-active, var(--text-normal));
+  font-weight: 600;
+}
+
+.bidi-flow-tree-row.tree-item-self.is-active .bidi-flow-level-pill,
+.bidi-flow-tree-node.is-active .bidi-flow-level-pill {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+/* Indentation Guidelines for Children (Nested Tree Structure) */
+.bidi-flow-tree-children.tree-item-children,
+.bidi-flow-children-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-inline-start: var(--bidi-indent-guide-offset, 12px);
+  padding-inline-start: 4px;
+  border-inline-start: 1px solid var(--nav-indentation-guide-color, var(--background-modifier-border));
+  position: relative;
+}
+
+.bidi-flow-tree-children.tree-item-children:hover,
+.bidi-flow-children-container:hover {
+  border-inline-start-color: var(--nav-indentation-guide-color-hover, var(--background-modifier-border-hover, var(--text-faint)));
+}
+
+/* Toggle Fold Icon (Chevron Icon) */
+.bidi-flow-toggle-icon.collapse-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  color: var(--nav-collapse-icon-color, var(--text-faint));
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  transition: transform 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+  margin-inline-end: 2px;
+}
+
+.bidi-flow-toggle-icon.collapse-icon:hover {
+  color: var(--nav-collapse-icon-color-collapsed, var(--text-normal));
+  background-color: var(--background-modifier-hover);
+}
+
+.bidi-flow-toggle-icon.collapse-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
+}
+
+.bidi-flow-toggle-icon.is-leaf {
+  display: none;
+}
+
+/* Level Badges */
+.bidi-flow-level-pill {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: var(--radius-s);
+  background-color: var(--background-modifier-border);
+  color: var(--text-faint);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-inline-end: 2px;
+}
+
+.bidi-flow-level-pill.level-1 {
+  background-color: rgba(var(--interactive-accent-rgb), 0.15);
+  color: var(--interactive-accent);
+}
+
+/* Heading Text & Bidirectional Handling */
+.bidi-flow-node-title.tree-item-inner,
+.bidi-flow-node-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: start;
+  line-height: var(--line-height-tight, 1.4);
+  font-size: var(--nav-item-size, 13px);
+  color: inherit;
+  unicode-bidi: plaintext;
+  overflow-wrap: anywhere;
+}
+
+.bidi-flow-node-title.is-rtl {
+  direction: rtl;
+  text-align: right;
+  font-feature-settings: "kern" 1;
+}
+
+.bidi-flow-node-title.is-ltr {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Empty State */
+.bidi-flow-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* ==========================================================================
+   Bottom Action Toolbar
+   ========================================================================== */
+
+.bidi-flow-bottom-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  background-color: var(--bidi-bg-alt, var(--background-secondary));
+  border-top: 1px solid var(--bidi-border, var(--background-modifier-border));
+  gap: 6px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  min-height: 36px;
+}
+
+.bidi-flow-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+  border-radius: var(--radius-s);
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bidi-flow-toolbar-btn:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border);
+  transform: translateY(-1px);
+}
+
+.bidi-flow-toolbar-btn:active {
+  transform: translateY(0);
+}
+
+.bidi-flow-toolbar-btn svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2;
+}
+
+.bidi-flow-auto-scroll-btn {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border-radius: var(--radius-m);
+}
+
+/* Pulsing and Active state for Auto Scroll */
+@keyframes bidi-toolbar-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--interactive-accent-rgb, 120, 110, 240), 0.5);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(var(--interactive-accent-rgb, 120, 110, 240), 0);
+    transform: scale(1.06);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--interactive-accent-rgb, 120, 110, 240), 0);
+    transform: scale(1);
+  }
+}
+
+.bidi-flow-toolbar-btn.is-active,
+.bidi-flow-auto-scroll-btn.is-active {
+  color: var(--interactive-accent);
+  background-color: var(--background-modifier-active-hover);
+  border-color: var(--interactive-accent);
+  animation: bidi-toolbar-pulse 1.8s infinite ease-in-out;
+}
+
+/* ==========================================================================
+   Floating Widget Overlay
+   ========================================================================== */
+
+.bidi-floating-navigator {
+  position: absolute;
+  z-index: var(--layer-popover, 30);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.bidi-floating-navigator > * {
+  pointer-events: auto;
+}
+
+/* Right Side Positioning */
+.bidi-floating-navigator.is-side-right {
+  right: 18px;
+  left: auto;
+  align-items: flex-end;
+}
+
+/* Left Side Positioning */
+.bidi-floating-navigator.is-side-left {
+  left: 18px;
+  right: auto;
+  align-items: flex-start;
+}
+
+/* Mode 1: Mini (Compact Pill Button) */
+.bidi-floating-navigator.is-mode-mini {
+  top: 48px;
+  width: auto;
+  height: auto;
+}
+
+.bidi-floating-navigator.is-mode-mini .bidi-floating-card {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.95);
+  pointer-events: none;
+  display: none;
+}
+
+.bidi-floating-navigator.is-mode-mini .bidi-floating-toggle-btn {
+  display: flex;
+}
+
+/* When in Floating or Full-Height, hide the pill button */
+.bidi-floating-navigator.is-mode-floating .bidi-floating-toggle-btn,
+.bidi-floating-navigator.is-mode-full-height .bidi-floating-toggle-btn {
+  display: none;
+}
+
+/* Mode 2: Floating Card Window */
+.bidi-floating-navigator.is-mode-floating {
+  top: 48px;
+  bottom: auto;
+  height: auto;
+}
+
+.bidi-floating-navigator.is-mode-floating .bidi-floating-card {
+  display: flex;
+  flex-direction: column;
+  max-height: 490px;
+  height: auto;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary);
+  box-shadow: none;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  overflow: hidden;
+}
+
+/* Mode 3: Full-Height Rail (Spanning entire page height) */
+.bidi-floating-navigator.is-mode-full-height {
+  top: 0;
+  bottom: 0;
+  height: 100%;
+  max-height: 100%;
+}
+
+.bidi-floating-navigator.is-mode-full-height.is-side-right {
+  right: 0;
+  left: auto;
+  align-items: stretch;
+}
+
+.bidi-floating-navigator.is-mode-full-height.is-side-left {
+  left: 0;
+  right: auto;
+  align-items: stretch;
+}
+
+.bidi-floating-navigator.is-mode-full-height .bidi-floating-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 100%;
+  border-radius: 0;
+  border-top: none;
+  border-bottom: none;
+  border-right: none;
+  border-left: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary);
+  box-shadow: none;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  overflow: hidden;
+}
+
+.bidi-floating-navigator.is-mode-full-height.is-side-left .bidi-floating-card {
+  border-left: none;
+  border-right: 1px solid var(--background-modifier-border);
+  box-shadow: none;
+}
+
+/* Floating Toggle Button (Compass Pill) */
+.bidi-floating-toggle-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-bottom: 6px;
+  transition: all 0.18s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.bidi-floating-toggle-btn:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--interactive-accent);
+  transform: scale(1.08);
+  box-shadow: none;
+}
+
+/* Collapsed State Fallback */
+.bidi-floating-navigator.is-collapsed .bidi-floating-card {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.96);
+  pointer-events: none;
+  display: none;
+}
+
+.bidi-floating-navigator.is-collapsed .bidi-floating-toggle-btn {
+  display: flex;
+}
+
+/* ==========================================================================
+   Mobile & Phone Responsive Positioning & Layout
+   ========================================================================== */
+
+.is-phone .bidi-floating-navigator.is-mode-mini,
+.is-mobile .bidi-floating-navigator.is-mode-mini {
+  top: 88px;
+}
+
+.is-phone .bidi-floating-navigator.is-mode-floating,
+.is-mobile .bidi-floating-navigator.is-mode-floating {
+  top: 88px;
+}
+
+/* Comfortable floating window length on mobile for unobtrusive access */
+.is-phone .bidi-floating-navigator.is-mode-floating .bidi-floating-card,
+.is-mobile .bidi-floating-navigator.is-mode-floating .bidi-floating-card,
+.is-phone .bidi-floating-navigator.is-mode-full-height .bidi-floating-card,
+.is-mobile .bidi-floating-navigator.is-mode-full-height .bidi-floating-card {
+  max-height: min(420px, calc(100vh - 150px));
+}
+
+/* Remove/hide maximize button on mobile using specific selectors without !important */
+body.is-phone .bidi-floating-navigator .bidi-flow-top-bar .bidi-flow-window-controls .bidi-flow-btn-mode,
+body.is-mobile .bidi-floating-navigator .bidi-flow-top-bar .bidi-flow-window-controls .bidi-flow-btn-mode,
+.is-phone .bidi-floating-navigator .bidi-flow-btn-mode,
+.is-mobile .bidi-floating-navigator .bidi-flow-btn-mode {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .bidi-floating-navigator.is-mode-mini {
+    top: 88px;
+  }
+  .bidi-floating-navigator.is-mode-floating {
+    top: 88px;
+  }
+  .bidi-floating-navigator.is-mode-floating .bidi-floating-card,
+  .bidi-floating-navigator.is-mode-full-height .bidi-floating-card {
+    max-height: min(420px, calc(100vh - 150px));
+  }
+  .bidi-floating-navigator .bidi-flow-top-bar .bidi-flow-window-controls .bidi-flow-btn-mode,
+  .bidi-floating-navigator .bidi-flow-btn-mode {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   Sidebar View Container
+   ========================================================================== */
+
+.bidi-sidebar-container {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Custom Scrollbar for Tree */
+.bidi-flow-tree-container::-webkit-scrollbar {
+  width: 5px;
+}
+
+.bidi-flow-tree-container::-webkit-scrollbar-thumb {
+  background-color: var(--background-modifier-border);
+  border-radius: 4px;
+}
+
+.bidi-flow-tree-container::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-faint);
+}
+
+/* ==========================================================================
+   Themes & Translucent Glass Architecture
+   ========================================================================== */
+
+/* Base & Default Theme (Obsidian Native Variables) */
+:root,
+[data-color-theme="default"],
+.bidi-flow-navigator {
+  --bidi-accent: var(--interactive-accent);
+  --bidi-accent-hover: var(--text-accent-hover, var(--interactive-accent-hover));
+  --bidi-bg: var(--background-primary);
+  --bidi-bg-alt: var(--background-secondary-alt);
+  --bidi-text: var(--text-normal);
+  --bidi-text-muted: var(--text-muted);
+  --bidi-border: var(--background-modifier-border);
+  --bidi-active-bg: var(--nav-item-background-active, var(--background-modifier-active-hover));
+  --bidi-card-bg-rgb: 30, 32, 40;
+  --bidi-border-rgb: 120, 120, 120;
+}
+
+.theme-light [data-color-theme="default"] {
+  --bidi-card-bg-rgb: 255, 255, 255;
+  --bidi-border-rgb: 210, 210, 210;
+}
+
+/* 1. Nord Theme */
+.theme-dark [data-color-theme="nord"],
+[data-color-theme="nord"] {
+  --bidi-accent: #88c0d0;
+  --bidi-accent-hover: #81a1c1;
+  --bidi-bg: #2e3440;
+  --bidi-bg-alt: #3b4252;
+  --bidi-text: #eceff4;
+  --bidi-text-muted: #d8dee9;
+  --bidi-border: #434c5e;
+  --bidi-active-bg: rgba(136, 192, 208, 0.22);
+  --bidi-card-bg-rgb: 46, 52, 64;
+  --bidi-border-rgb: 67, 76, 94;
+}
+
+.theme-light [data-color-theme="nord"] {
+  --bidi-accent: #5e81ac;
+  --bidi-accent-hover: #81a1c1;
+  --bidi-bg: #eceff4;
+  --bidi-bg-alt: #e5e9f0;
+  --bidi-text: #2e3440;
+  --bidi-text-muted: #4c566a;
+  --bidi-border: #d8dee9;
+  --bidi-active-bg: rgba(94, 129, 172, 0.18);
+  --bidi-card-bg-rgb: 236, 239, 244;
+  --bidi-border-rgb: 216, 222, 233;
+}
+
+/* 2. Dracula Theme */
+.theme-dark [data-color-theme="dracula"],
+[data-color-theme="dracula"] {
+  --bidi-accent: #bd93f9;
+  --bidi-accent-hover: #ff79c6;
+  --bidi-bg: #282a36;
+  --bidi-bg-alt: #343746;
+  --bidi-text: #f8f8f2;
+  --bidi-text-muted: #6272a4;
+  --bidi-border: #44475a;
+  --bidi-active-bg: rgba(189, 147, 249, 0.22);
+  --bidi-card-bg-rgb: 40, 42, 54;
+  --bidi-border-rgb: 68, 71, 90;
+}
+
+.theme-light [data-color-theme="dracula"] {
+  --bidi-accent: #7b42bc;
+  --bidi-accent-hover: #d63384;
+  --bidi-bg: #f8f8f2;
+  --bidi-bg-alt: #f1f2f6;
+  --bidi-text: #282a36;
+  --bidi-text-muted: #6272a4;
+  --bidi-border: #dcdde1;
+  --bidi-active-bg: rgba(123, 66, 188, 0.16);
+  --bidi-card-bg-rgb: 248, 248, 242;
+  --bidi-border-rgb: 220, 221, 225;
+}
+
+/* 3. Catppuccin Mocha */
+.theme-dark [data-color-theme="catppuccin"],
+[data-color-theme="catppuccin"] {
+  --bidi-accent: #cba6f7;
+  --bidi-accent-hover: #f5c2e7;
+  --bidi-bg: #1e1e2e;
+  --bidi-bg-alt: #181825;
+  --bidi-text: #cdd6f4;
+  --bidi-text-muted: #a6adc8;
+  --bidi-border: #313244;
+  --bidi-active-bg: rgba(203, 166, 247, 0.2);
+  --bidi-card-bg-rgb: 30, 30, 46;
+  --bidi-border-rgb: 49, 50, 68;
+}
+
+.theme-light [data-color-theme="catppuccin"] {
+  --bidi-accent: #8839ef;
+  --bidi-accent-hover: #ea76cb;
+  --bidi-bg: #eff1f5;
+  --bidi-bg-alt: #e6e9ef;
+  --bidi-text: #4c4f69;
+  --bidi-text-muted: #6c6f85;
+  --bidi-border: #ccd0da;
+  --bidi-active-bg: rgba(136, 57, 239, 0.16);
+  --bidi-card-bg-rgb: 239, 241, 245;
+  --bidi-border-rgb: 204, 208, 218;
+}
+
+/* 4. Gruvbox */
+.theme-dark [data-color-theme="gruvbox"],
+[data-color-theme="gruvbox"] {
+  --bidi-accent: #fabd2f;
+  --bidi-accent-hover: #fe8019;
+  --bidi-bg: #282828;
+  --bidi-bg-alt: #32302f;
+  --bidi-text: #ebdbb2;
+  --bidi-text-muted: #a89984;
+  --bidi-border: #504945;
+  --bidi-active-bg: rgba(250, 189, 47, 0.2);
+  --bidi-card-bg-rgb: 40, 40, 40;
+  --bidi-border-rgb: 80, 73, 69;
+}
+
+.theme-light [data-color-theme="gruvbox"] {
+  --bidi-accent: #d79921;
+  --bidi-accent-hover: #af3a03;
+  --bidi-bg: #fbf1c7;
+  --bidi-bg-alt: #f2e5bc;
+  --bidi-text: #3c3836;
+  --bidi-text-muted: #7c6f64;
+  --bidi-border: #d5c4a1;
+  --bidi-active-bg: rgba(215, 153, 33, 0.18);
+  --bidi-card-bg-rgb: 251, 241, 199;
+  --bidi-border-rgb: 213, 196, 161;
+}
+
+/* 5. Tokyo Night */
+.theme-dark [data-color-theme="tokyo-night"],
+[data-color-theme="tokyo-night"] {
+  --bidi-accent: #7aa2f7;
+  --bidi-accent-hover: #bb9af7;
+  --bidi-bg: #1a1b26;
+  --bidi-bg-alt: #24283b;
+  --bidi-text: #c0caf5;
+  --bidi-text-muted: #9aa5ce;
+  --bidi-border: #414868;
+  --bidi-active-bg: rgba(122, 162, 247, 0.22);
+  --bidi-card-bg-rgb: 26, 27, 38;
+  --bidi-border-rgb: 65, 72, 104;
+}
+
+.theme-light [data-color-theme="tokyo-night"] {
+  --bidi-accent: #2e7de9;
+  --bidi-accent-hover: #7b42bc;
+  --bidi-bg: #e1e2e7;
+  --bidi-bg-alt: #d5d6db;
+  --bidi-text: #3760bf;
+  --bidi-text-muted: #6172b0;
+  --bidi-border: #b4b5b9;
+  --bidi-active-bg: rgba(46, 125, 233, 0.16);
+  --bidi-card-bg-rgb: 225, 226, 231;
+  --bidi-border-rgb: 180, 181, 185;
+}
+
+/* 6. Solarized */
+.theme-dark [data-color-theme="solarized"],
+[data-color-theme="solarized"] {
+  --bidi-accent: #268bd2;
+  --bidi-accent-hover: #2aa198;
+  --bidi-bg: #002b36;
+  --bidi-bg-alt: #073642;
+  --bidi-text: #93a1a1;
+  --bidi-text-muted: #586e75;
+  --bidi-border: #073642;
+  --bidi-active-bg: rgba(38, 139, 210, 0.22);
+  --bidi-card-bg-rgb: 0, 43, 54;
+  --bidi-border-rgb: 7, 54, 66;
+}
+
+.theme-light [data-color-theme="solarized"] {
+  --bidi-accent: #268bd2;
+  --bidi-accent-hover: #2aa198;
+  --bidi-bg: #fdf6e3;
+  --bidi-bg-alt: #eee8d5;
+  --bidi-text: #657b83;
+  --bidi-text-muted: #93a1a1;
+  --bidi-border: #eee8d5;
+  --bidi-active-bg: rgba(38, 139, 210, 0.18);
+  --bidi-card-bg-rgb: 253, 246, 227;
+  --bidi-border-rgb: 238, 232, 213;
+}
+
+/* ==========================================================================
+   Theme Style: Solid vs Transparent (Frosted Glassmorphism)
+   ========================================================================== */
+
+/* Solid Style */
+.bidi-floating-navigator[data-theme-style="solid"] .bidi-floating-card,
+.bidi-floating-navigator.is-mode-floating[data-theme-style="solid"] .bidi-floating-card,
+.bidi-floating-navigator.is-mode-full-height[data-theme-style="solid"] .bidi-floating-card,
+.bidi-floating-card[data-theme-style="solid"],
+[data-theme-style="solid"] .bidi-floating-card,
+[data-theme-style="solid"].bidi-floating-card,
+.bidi-flow-navigator[data-theme-style="solid"],
+[data-theme-style="solid"] .bidi-flow-navigator,
+.bidi-sidebar-container[data-theme-style="solid"],
+[data-theme-style="solid"].bidi-sidebar-container {
+  background-color: var(--bidi-bg);
+  color: var(--bidi-text);
+  border-color: var(--bidi-border);
+}
+
+/* Transparent Style (Frosted Glass: 50%-70% transparency, 40%-60% blur) */
+.bidi-floating-navigator[data-theme-style="transparent"] .bidi-floating-card,
+.bidi-floating-navigator.is-mode-floating[data-theme-style="transparent"] .bidi-floating-card,
+.bidi-floating-navigator.is-mode-full-height[data-theme-style="transparent"] .bidi-floating-card,
+.bidi-floating-navigator.is-mode-full-height.is-side-left[data-theme-style="transparent"] .bidi-floating-card,
+.bidi-floating-card[data-theme-style="transparent"],
+[data-theme-style="transparent"] .bidi-floating-card,
+[data-theme-style="transparent"].bidi-floating-card {
+  background-color: rgba(var(--bidi-card-bg-rgb), 0.42);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  border: 1px solid rgba(var(--bidi-border-rgb), 0.35);
+  box-shadow: none;
+  color: var(--bidi-text);
+}
+
+.bidi-sidebar-container[data-theme-style="transparent"],
+[data-theme-style="transparent"].bidi-sidebar-container,
+[data-theme-style="transparent"] .bidi-sidebar-container,
+.bidi-flow-navigator[data-theme-style="transparent"],
+[data-theme-style="transparent"] .bidi-flow-navigator,
+[data-theme-style="transparent"].bidi-flow-navigator {
+  background-color: rgba(var(--bidi-card-bg-rgb), 0.42);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  color: var(--bidi-text);
+}
+
+.bidi-flow-navigator[data-theme-style="transparent"] .bidi-flow-header,
+[data-theme-style="transparent"] .bidi-flow-header,
+.bidi-flow-navigator[data-theme-style="transparent"] .bidi-flow-search-box,
+[data-theme-style="transparent"] .bidi-flow-search-box,
+.bidi-flow-navigator[data-theme-style="transparent"] .bidi-flow-bottom-toolbar,
+[data-theme-style="transparent"] .bidi-flow-bottom-toolbar {
+  background-color: rgba(var(--bidi-card-bg-rgb), 0.28);
+  border-color: rgba(var(--bidi-border-rgb), 0.22);
+}
+
+.bidi-flow-navigator[data-theme-style="transparent"] .bidi-flow-search-input,
+[data-theme-style="transparent"] .bidi-flow-search-input {
+  background-color: rgba(var(--bidi-card-bg-rgb), 0.35);
+  border-color: rgba(var(--bidi-border-rgb), 0.3);
+  color: var(--bidi-text);
+}
+
+.bidi-flow-navigator[data-theme-style="transparent"] .bidi-flow-current-badge,
+[data-theme-style="transparent"] .bidi-flow-current-badge {
+  background-color: rgba(var(--bidi-card-bg-rgb), 0.38);
+  border-color: rgba(var(--bidi-border-rgb), 0.25);
+}
+
+.bidi-floating-navigator[data-theme-style="transparent"] .bidi-floating-toggle-btn,
+.bidi-floating-navigator.is-mode-mini[data-theme-style="transparent"] .bidi-floating-toggle-btn,
+.bidi-floating-toggle-btn[data-theme-style="transparent"],
+[data-theme-style="transparent"] .bidi-floating-toggle-btn {
+  background-color: rgba(var(--bidi-card-bg-rgb), 0.5);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(var(--bidi-border-rgb), 0.35);
+  box-shadow: none;
+}
+
+
+/* ==========================================================================
+   Settings Tab: RTL Layout for Persian (Fa) Mode
+   Moves labels/descriptions to the right and controls (checkboxes,
+   toggles, dropdowns, sliders) to the left of the screen.
+   ========================================================================== */
+
+.bidi-flow-settings-rtl,
+.vertical-tab-content.bidi-flow-settings-rtl,
+.vertical-tab-content[dir="rtl"] {
+  direction: rtl !important;
+  text-align: right !important;
+  font-family: var(--font-interface), "Vazirmatn", "Shabnam", "Sahel", "IRANSans", system-ui, -apple-system, sans-serif;
+}
+
+.bidi-flow-settings-rtl .setting-item,
+.vertical-tab-content.bidi-flow-settings-rtl .setting-item,
+.vertical-tab-content[dir="rtl"] .setting-item {
+  direction: rtl !important;
+  text-align: right !important;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+
+.bidi-flow-settings-rtl .setting-item-info,
+.vertical-tab-content.bidi-flow-settings-rtl .setting-item-info,
+.vertical-tab-content[dir="rtl"] .setting-item-info {
+  direction: rtl !important;
+  text-align: right !important;
+  margin-right: 0 !important;
+  margin-left: 24px !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+.bidi-flow-settings-rtl .setting-item-name,
+.vertical-tab-content.bidi-flow-settings-rtl .setting-item-name,
+.vertical-tab-content[dir="rtl"] .setting-item-name {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.bidi-flow-settings-rtl .setting-item-description,
+.vertical-tab-content.bidi-flow-settings-rtl .setting-item-description,
+.vertical-tab-content[dir="rtl"] .setting-item-description {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.bidi-flow-settings-rtl .setting-item-heading,
+.vertical-tab-content.bidi-flow-settings-rtl .setting-item-heading,
+.vertical-tab-content[dir="rtl"] .setting-item-heading {
+  direction: rtl !important;
+  text-align: right !important;
+  flex-direction: row !important;
+}
+
+.bidi-flow-settings-rtl .setting-item-heading .setting-item-info,
+.vertical-tab-content.bidi-flow-settings-rtl .setting-item-heading .setting-item-info,
+.vertical-tab-content[dir="rtl"] .setting-item-heading .setting-item-info {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.bidi-flow-settings-rtl .setting-item-heading .setting-item-name,
+.vertical-tab-content.bidi-flow-settings-rtl .setting-item-heading .setting-item-name,
+.vertical-tab-content[dir="rtl"] .setting-item-heading .setting-item-name {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.bidi-flow-settings-rtl .setting-item-control,
+.vertical-tab-content.bidi-flow-settings-rtl .setting-item-control,
+.vertical-tab-content[dir="rtl"] .setting-item-control {
+  direction: ltr !important;
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  flex: 0 0 auto !important;
+  gap: 8px !important;
+}
+
+.bidi-flow-settings-rtl select.dropdown,
+.vertical-tab-content.bidi-flow-settings-rtl select.dropdown,
+.vertical-tab-content[dir="rtl"] select.dropdown {
+  direction: rtl !important;
+  text-align: right !important;
+  text-align-last: right !important;
+}
+
+.bidi-flow-settings-rtl select.dropdown option,
+.vertical-tab-content.bidi-flow-settings-rtl select.dropdown option,
+.vertical-tab-content[dir="rtl"] select.dropdown option {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.bidi-flow-settings-rtl input[type="text"],
+.bidi-flow-settings-rtl input[type="search"],
+.vertical-tab-content.bidi-flow-settings-rtl input[type="text"],
+.vertical-tab-content[dir="rtl"] input[type="text"] {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.bidi-flow-settings-rtl .checkbox-container,
+.vertical-tab-content.bidi-flow-settings-rtl .checkbox-container,
+.vertical-tab-content[dir="rtl"] .checkbox-container {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.bidi-flow-settings-rtl .slider-container,
+.bidi-flow-settings-rtl input[type="range"].slider,
+.vertical-tab-content.bidi-flow-settings-rtl input[type="range"].slider,
+.vertical-tab-content[dir="rtl"] input[type="range"].slider {
+  direction: rtl !important;
+  --inset-end: left !important;
+  --inset-start: right !important;
+  background-image: linear-gradient(to left, var(--slider-fill-background, var(--interactive-accent)) var(--slider-fill-position), var(--slider-track-background) var(--slider-fill-position)) !important;
+}
