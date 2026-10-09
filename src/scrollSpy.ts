@@ -415,11 +415,11 @@ export function scrollWithRetry(
 
   const interval = window.setInterval(() => {
     attempts++;
-    if (tryScroll() || attempts >= 50) {
+    if (tryScroll() || attempts >= 8) {
       window.clearInterval(interval);
-      if (attempts >= 50) {
+      if (attempts >= 8) {
         onSuccess?.();
       }
     }
-  }, 40);
+  }, 500);
 }
