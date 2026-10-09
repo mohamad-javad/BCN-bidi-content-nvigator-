@@ -635,65 +635,99 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
 
     const tryRestore = (): boolean => {
       if (!view.containerEl.isConnected || view.file?.path !== file.path) {
-        // View disconnected or navigated away — cancel cleanly
         this.restoringFiles.delete(file.path);
         return true;
       }
 
+      const targetLine = saved.line;
+
+      // 1. Instant line & cursor scroll (Fast Path)
+      if (view.getMode() === 'preview') {
+        const preview = view.previewMode;
+        if (preview) {
+          try {
+            const previewRenderer = (preview as unknown as { renderer?: { applyScrollDelayed?: (line: number) => void; applyScroll?: (line: number) => boolean } })?.renderer;
+            if (typeof previewRenderer?.applyScrollDelayed === 'function') {
+              previewRenderer.applyScrollDelayed(targetLine);
+            } else if (typeof (preview as unknown as { applyScroll?: (line: number) => void })?.applyScroll === 'function') {
+              (preview as unknown as { applyScroll?: (line: number) => void }).applyScroll!(targetLine);
+            }
+          } catch {
+            // Ignore
+          }
+        }
+      } else {
+        const editor = view.editor;
+        if (editor) {
+          const totalLines = editor.lineCount();
+          if (totalLines <= targetLine && totalLines < 5) {
+            // Editor content is still loading from disk asynchronously
+            return false;
+          }
+
+          const safeLine = Math.min(targetLine, Math.max(0, totalLines - 1));
+          try {
+            editor.setCursor({ line: safeLine, ch: 0 });
+          } catch {
+            // Ignore
+          }
+
+          const scroller = view.contentEl.querySelector<HTMLElement>('.cm-scroller');
+          if (scroller) {
+            const cm = getCodeMirrorView(editor);
+            if (cm?.state?.doc) {
+              try {
+                const line1 = Math.min(cm.state.doc.lines, Math.max(1, safeLine + 1));
+                const linePos = cm.state.doc.line(line1).from;
+                const block = cm.lineBlockAt ? cm.lineBlockAt(linePos) : null;
+                if (block) {
+                  scroller.scrollTo({ top: block.top, behavior: 'auto' });
+                }
+              } catch {
+                // Ignore
+              }
+            }
+          }
+
+          try {
+            editor.scrollIntoView({ from: { line: safeLine, ch: 0 }, to: { line: safeLine, ch: 0 } }, false);
+          } catch {
+            // Ignore
+          }
+        }
+      }
+
+      // 2. Metadata sync: Find matching heading for outline highlight
       const cache = this.app.metadataCache.getFileCache(file);
       const headings = cache?.headings;
-      if (!headings || headings.length === 0) return false;
+      if (headings && headings.length > 0) {
+        const targetHeading = this.findMatchingHeading(headings, saved)
+          ?? headings.find(h => h.position.start.line === targetLine)
+          ?? headings[0];
 
-      const targetHeading = this.findMatchingHeading(headings, saved);
-      if (!targetHeading) {
-        this.restoringFiles.delete(file.path);
-        return true;
-      }
+        if (targetHeading) {
+          this.lastActiveHeadings.set(view, targetHeading);
 
-      if (view.getMode() !== 'preview') {
-        const editor = view.editor;
-        if (!editor || editor.lineCount() <= targetHeading.position.start.line) {
-          return false;
-        }
-      }
-
-      // Restore scroll position
-      const ok = scrollToHeading(view, targetHeading, 'auto');
-      if (!ok) return false;
-
-      this.lastActiveHeadings.set(view, targetHeading);
-
-      // Update active heading in floating widget
-      const widget = this.floatingWidgets.get(view);
-      if (widget?.core) {
-        widget.core.setActiveHeadingManually(targetHeading);
-      }
-
-      // Update active heading in sidebar.
-      // Race condition guard: if sidebar core hasn't loaded this view's headings yet
-      // (e.g. active-leaf-change fires after file-open), call setView first so
-      // rawHeadings gets populated before setActiveHeadingManually.
-      const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
-      for (const leaf of sidebarLeaves) {
-        if (leaf.view instanceof BidiFlowSidebarView && leaf.view.core) {
-          const sidebarCore = leaf.view.core;
-          if (sidebarCore.getHeadingCount() === 0) {
-            sidebarCore.setView(view);
+          const widget = this.floatingWidgets.get(view);
+          if (widget?.core) {
+            widget.core.setActiveHeadingManually(targetHeading);
           }
-          sidebarCore.setActiveHeadingManually(targetHeading);
+
+          const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
+          for (const leaf of sidebarLeaves) {
+            if (leaf.view instanceof BidiFlowSidebarView && leaf.view.core) {
+              if (leaf.view.core.getHeadingCount() === 0) {
+                leaf.view.core.setView(view);
+              }
+              leaf.view.core.setActiveHeadingManually(targetHeading);
+            }
+          }
         }
       }
 
-      // Verification pass: Obsidian's internal leaf layout often resets scroll position
-      // after the first event cycle. A quick re-assertion after 120ms ensures the heading stays locked.
       window.setTimeout(() => {
-        if (view.containerEl.isConnected && view.file?.path === file.path) {
-          scrollToHeading(view, targetHeading, 'auto');
-        }
-        window.setTimeout(() => {
-          this.restoringFiles.delete(file.path);
-        }, 120);
-      }, 120);
+        this.restoringFiles.delete(file.path);
+      }, 150);
 
       return true;
     };
@@ -705,15 +739,14 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
     let attempts = 0;
     const interval = window.setInterval(() => {
       attempts++;
-      if (tryRestore() || attempts >= 30) {
+      if (tryRestore() || attempts >= 25) {
         window.clearInterval(interval);
         this.restoreIntervals.delete(interval);
-        if (attempts >= 30) {
+        if (attempts >= 25) {
           this.restoringFiles.delete(file.path);
         }
       }
-    }, 35);
-    // Track interval so it can be cleared if the plugin is unloaded mid-restore
+    }, 40);
     this.restoreIntervals.add(interval);
   }
 
