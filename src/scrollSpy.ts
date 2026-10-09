@@ -90,7 +90,7 @@ export function findLatestHeadingBeforeLine(
 export function getActiveHeadingInSourceMode(
   view: MarkdownView,
   headings: HeadingCache[],
-  bufferPx = 60
+  bufferPx = 90
 ): HeadingCache | null {
   if (!headings || headings.length === 0) return null;
 
@@ -156,7 +156,7 @@ export function getActiveHeadingInSourceMode(
     }
   }
 
-  return headings[0] ?? null;
+  return null;
 }
 
 /**
@@ -165,7 +165,7 @@ export function getActiveHeadingInSourceMode(
 export function getActiveHeadingInReadingView(
   view: MarkdownView,
   headings: HeadingCache[],
-  bufferPx = 60
+  bufferPx = 90
 ): HeadingCache | null {
   if (!headings || headings.length === 0) return null;
 
@@ -220,7 +220,7 @@ export function getActiveHeadingInReadingView(
 export function getActiveHeading(
   view: MarkdownView,
   headings: HeadingCache[],
-  bufferPx = 60
+  bufferPx = 90
 ): HeadingCache | null {
   if (!view || !headings || headings.length === 0) return null;
   const mode = view.getMode();

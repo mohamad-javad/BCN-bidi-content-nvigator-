@@ -32,6 +32,7 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
         new BidiFlowSidebarView(leaf, this.settings, (heading) => {
           const activeMd = this.app.workspace.getActiveViewOfType(MarkdownView);
           if (activeMd?.file) {
+            if (this.restoringFiles.has(activeMd.file.path)) return;
             this.lastActiveHeadings.set(activeMd, heading);
             this.saveHeadingPosition(activeMd.file.path, heading);
           }
@@ -348,6 +349,7 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
 
           const widget = new BidiFlowFloatingWidget(view, this.settings, (heading) => {
             if (view.file) {
+              if (this.restoringFiles.has(view.file.path)) return;
               this.lastActiveHeadings.set(view, heading);
               this.saveHeadingPosition(view.file.path, heading);
             }
@@ -379,43 +381,41 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
           // Lock position saving immediately so transient 0-scroll events during mode switch don't overwrite the heading!
           this.restoringFiles.add(filePath);
 
-          const cache = this.app.metadataCache.getFileCache(file);
-          const headings = cache?.headings;
-          if (!headings || headings.length === 0) {
-            window.setTimeout(() => this.restoringFiles.delete(filePath), 400);
-            continue;
-          }
-
-          const widget = this.floatingWidgets.get(view);
-          const currentCoreHeading = widget?.core.getActiveHeading();
-          const lastActive = currentCoreHeading ?? this.lastActiveHeadings.get(view);
-          const saved = this.settings.savedHeadingPositions?.[filePath];
-          const targetHeading = (lastActive && headings.some(h => h.heading === lastActive.heading && h.position.start.line === lastActive.position.start.line))
-            ? lastActive
-            : (saved ? this.findMatchingHeading(headings, saved) : headings[0]);
-
-          if (!targetHeading) {
-            window.setTimeout(() => this.restoringFiles.delete(filePath), 400);
-            continue;
-          }
-
-          scrollWithRetry(view, targetHeading, 'auto', () => {
-            if (widget?.core) {
-              widget.core.setActiveHeadingManually(targetHeading);
+          // Obsidian natively maintains the reader/editor position during mode switch.
+          // We do NOT force a synthetic scroll here to avoid backwards-drift loops or jump-to-top.
+          // Once the view settles in the new mode, read the current heading and synchronize the navigator UI smoothly.
+          window.setTimeout(() => {
+            if (!view.containerEl.isConnected || view.file?.path !== filePath) {
+              this.restoringFiles.delete(filePath);
+              return;
             }
-            const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
-            for (const sl of sidebarLeaves) {
-              if (sl.view instanceof BidiFlowSidebarView && sl.view.core) {
-                if (sl.view.core.getHeadingCount() === 0) {
-                  sl.view.core.setView(view);
+
+            const cache = this.app.metadataCache.getFileCache(file);
+            const headings = cache?.headings;
+            if (headings && headings.length > 0) {
+              const active = getActiveHeading(view, headings, 100) ?? this.lastActiveHeadings.get(view);
+              if (active) {
+                this.lastActiveHeadings.set(view, active);
+                this.saveHeadingPosition(filePath, active);
+
+                const widget = this.floatingWidgets.get(view);
+                if (widget?.core) {
+                  widget.core.setActiveHeadingManually(active);
                 }
-                sl.view.core.setActiveHeadingManually(targetHeading);
+                const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
+                for (const sl of sidebarLeaves) {
+                  if (sl.view instanceof BidiFlowSidebarView && sl.view.core) {
+                    if (sl.view.core.getHeadingCount() === 0) {
+                      sl.view.core.setView(view);
+                    }
+                    sl.view.core.setActiveHeadingManually(active);
+                  }
+                }
               }
             }
-            window.setTimeout(() => {
-              this.restoringFiles.delete(filePath);
-            }, 350);
-          });
+
+            this.restoringFiles.delete(filePath);
+          }, 200);
         } else if (!prevMode) {
           this.viewModeMap.set(view, currentMode);
         }
