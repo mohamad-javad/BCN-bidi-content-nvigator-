@@ -90,7 +90,7 @@ export function findLatestHeadingBeforeLine(
 export function getActiveHeadingInSourceMode(
   view: MarkdownView,
   headings: HeadingCache[],
-  bufferPx = 90
+  bufferPx = 60
 ): HeadingCache | null {
   if (!headings || headings.length === 0) return null;
 
@@ -165,7 +165,7 @@ export function getActiveHeadingInSourceMode(
 export function getActiveHeadingInReadingView(
   view: MarkdownView,
   headings: HeadingCache[],
-  bufferPx = 90
+  bufferPx = 60
 ): HeadingCache | null {
   if (!headings || headings.length === 0) return null;
 
@@ -211,7 +211,7 @@ export function getActiveHeadingInReadingView(
     return findLatestHeadingBeforeLine(headings, Math.floor(currentScrollLine + 2));
   }
 
-  return headings[0] ?? null;
+  return null;
 }
 
 /**
@@ -220,7 +220,7 @@ export function getActiveHeadingInReadingView(
 export function getActiveHeading(
   view: MarkdownView,
   headings: HeadingCache[],
-  bufferPx = 90
+  bufferPx = 60
 ): HeadingCache | null {
   if (!view || !headings || headings.length === 0) return null;
   const mode = view.getMode();
@@ -281,8 +281,6 @@ export function scrollToHeadingInSourceMode(
   const editor = view.editor;
   if (!editor || editor.lineCount() <= targetLine) return false;
 
-  let scrolled = false;
-
   // 1. Position editor cursor
   try {
     editor.setCursor({ line: targetLine, ch: 0 });
@@ -290,7 +288,8 @@ export function scrollToHeadingInSourceMode(
     // Ignore
   }
 
-  // 2. Obsidian native subView applyScroll to position heading at top
+  // 2. Use Obsidian's native subView applyScroll to position heading at top
+  let scrolled = false;
   try {
     const subView = (view as unknown as { currentMode?: MarkdownSubView; editMode?: MarkdownSubView }).currentMode ??
                     (view as unknown as { editMode?: MarkdownSubView }).editMode;
@@ -302,45 +301,19 @@ export function scrollToHeadingInSourceMode(
     // Ignore
   }
 
-  // 3. Direct CodeMirror 6 scroll on cm-scroller for immediate, guaranteed top positioning
-  const scroller = view.contentEl.querySelector<HTMLElement>('.cm-scroller');
-  if (scroller) {
-    const cm = getCodeMirrorView(editor);
-    if (cm?.state?.doc) {
-      try {
-        const line1 = Math.min(cm.state.doc.lines, Math.max(1, targetLine + 1));
-        const linePos = cm.state.doc.line(line1).from;
-        const block = cm.lineBlockAt ? cm.lineBlockAt(linePos) : null;
-        if (block) {
-          scroller.scrollTo({ top: block.top, behavior });
-          scrolled = true;
-        }
-      } catch {
-        // Ignore
-      }
+  // 3. Fallback: scrollIntoView without centering jump (center = false)
+  if (!scrolled) {
+    try {
+      editor.scrollIntoView(
+        { from: { line: targetLine, ch: 0 }, to: { line: targetLine, ch: 0 } },
+        false
+      );
+    } catch {
+      // Ignore
     }
   }
 
-  // 4. Editor scrollIntoView fallback
-  try {
-    editor.scrollIntoView(
-      { from: { line: targetLine, ch: 0 }, to: { line: targetLine, ch: 0 } },
-      false
-    );
-    scrolled = true;
-  } catch {
-    // Ignore
-  }
-
-  // 5. Ephemeral state fallback
-  try {
-    view.setEphemeralState({ line: targetLine });
-    scrolled = true;
-  } catch {
-    // Ignore
-  }
-
-  return scrolled;
+  return true;
 }
 
 /**
@@ -354,66 +327,41 @@ export function scrollToHeadingInReadingView(
   const targetLine = heading.position.start.line;
   const preview = view.previewMode;
   const container = preview?.containerEl;
-  
   if (!container) return false;
 
-  const findTargetEl = (): HTMLHeadingElement | undefined => {
-    const headingEls = Array.from(
-      container.querySelectorAll<HTMLHeadingElement>('h1, h2, h3, h4, h5, h6')
+  const headingEls = Array.from(
+    container.querySelectorAll<HTMLHeadingElement>('h1, h2, h3, h4, h5, h6')
+  );
+  const cleanTarget = cleanHeadingText(heading.heading);
+  const targetEl = headingEls.find(el => {
+    const dataH = el.getAttribute('data-heading');
+    const textH = el.textContent?.trim();
+    return (
+      dataH === heading.heading ||
+      textH === heading.heading.trim() ||
+      (dataH && cleanHeadingText(dataH) === cleanTarget) ||
+      (textH && cleanHeadingText(textH) === cleanTarget)
     );
-    const cleanTarget = cleanHeadingText(heading.heading);
-    return headingEls.find(el => {
-      const dataH = el.getAttribute('data-heading');
-      const textH = el.textContent?.trim();
-      return (
-        dataH === heading.heading ||
-        textH === heading.heading.trim() ||
-        (dataH && cleanHeadingText(dataH) === cleanTarget) ||
-        (textH && cleanHeadingText(textH) === cleanTarget)
-      );
-    });
-  };
+  });
 
-  const targetEl = findTargetEl();
   if (targetEl) {
     targetEl.scrollIntoView({ behavior, block: 'start' });
     return true;
   }
 
   // Ensure preview.applyScroll is also called for accurate virtual positioning
-  let applied = false;
   try {
     const previewRenderer = (preview as unknown as { renderer?: { applyScrollDelayed?: (line: number) => void; applyScroll?: (line: number) => boolean } })?.renderer;
     if (typeof previewRenderer?.applyScrollDelayed === 'function') {
       previewRenderer.applyScrollDelayed(targetLine);
-      applied = true;
     } else {
       const previewScroll = preview as unknown as MarkdownPreviewViewWithScroll;
       if (typeof previewScroll.applyScroll === 'function') {
         previewScroll.applyScroll(targetLine);
-        applied = true;
       }
     }
   } catch {
     // Ignore
-  }
-
-  try {
-    view.setEphemeralState({ line: targetLine });
-    applied = true;
-  } catch {
-    // Ignore
-  }
-
-  if (applied) {
-    window.setTimeout(() => {
-      if (!view.containerEl.isConnected) return;
-      const delayedEl = findTargetEl();
-      if (delayedEl) {
-        delayedEl.scrollIntoView({ behavior: 'auto', block: 'start' });
-      }
-    }, 100);
-    return true;
   }
 
   return false;
@@ -458,11 +406,11 @@ export function scrollWithRetry(
 
   const interval = window.setInterval(() => {
     attempts++;
-    if (tryScroll() || attempts >= 30) {
+    if (tryScroll() || attempts >= 25) {
       window.clearInterval(interval);
-      if (attempts >= 30) {
+      if (attempts >= 25) {
         onSuccess?.();
       }
     }
-  }, 50);
+  }, 40);
 }

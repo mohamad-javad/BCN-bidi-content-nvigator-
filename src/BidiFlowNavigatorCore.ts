@@ -989,10 +989,7 @@ export class BidiFlowNavigatorCore extends Component {
   }
 
   public jumpToSpecificHeading(target: HeadingCache): void {
-    const view = this.getActiveMarkdownView();
-    if (!view) return;
-    this.currentView = view;
-
+    if (!this.currentView) return;
     this.stopAutoScroll();
     this.isUserInteractingWithTree = false;
 
@@ -1006,13 +1003,6 @@ export class BidiFlowNavigatorCore extends Component {
     this.calculateReadingProgress();
 
     scrollToHeading(this.currentView, target, 'smooth');
-    if (this.currentView.editor) {
-      try {
-        this.currentView.editor.setCursor({ line: target.position.start.line, ch: 0 });
-      } catch {
-        // Ignore
-      }
-    }
     if (this.currentView.getMode() !== 'preview') {
       this.currentView.editor?.focus();
     }
@@ -1288,38 +1278,10 @@ export class BidiFlowNavigatorCore extends Component {
     }
   }
 
-  public scrollPage(direction: 'down' | 'up'): void {
-    const view = this.getActiveMarkdownView();
-    if (!view) return;
-    this.stopAutoScroll();
-
-    const scrollContainer = this.getScrollContainer(view);
-    if (scrollContainer && scrollContainer.clientHeight > 50) {
-      const pageDelta = Math.round(scrollContainer.clientHeight * 0.85);
-      scrollContainer.scrollBy({
-        top: direction === 'down' ? pageDelta : -pageDelta,
-        behavior: 'smooth',
-      });
-    } else {
-      const currentLine = this.getCurrentScrollLine();
-      const pageSize = this.getPageSizeInLines();
-      const totalLines = view.editor ? view.editor.lineCount() : 1000;
-      const targetLine = direction === 'down'
-        ? Math.min(totalLines - 1, Math.round(currentLine + pageSize))
-        : Math.max(0, Math.round(currentLine - pageSize));
-      this.scrollToLine(targetLine);
-    }
-  }
-
   public jumpNextPart(): void {
     const view = this.getActiveMarkdownView();
     if (!view) return;
     this.stopAutoScroll();
-
-    if (this.settings.nextPartPageScroll) {
-      this.scrollPage('down');
-      return;
-    }
 
     const currentLine = this.getCurrentScrollLine();
     const pageSize = this.getPageSizeInLines();
@@ -1348,11 +1310,6 @@ export class BidiFlowNavigatorCore extends Component {
     const view = this.getActiveMarkdownView();
     if (!view) return;
     this.stopAutoScroll();
-
-    if (this.settings.nextPartPageScroll) {
-      this.scrollPage('up');
-      return;
-    }
 
     const currentLine = this.getCurrentScrollLine();
     const pageSize = this.getPageSizeInLines();
