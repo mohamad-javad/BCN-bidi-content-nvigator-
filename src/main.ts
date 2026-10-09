@@ -381,7 +381,9 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
             continue;
           }
 
-          const lastActive = this.lastActiveHeadings.get(view);
+          const widget = this.floatingWidgets.get(view);
+          const currentCoreHeading = widget?.core.getActiveHeading();
+          const lastActive = currentCoreHeading ?? this.lastActiveHeadings.get(view);
           const saved = this.settings.savedHeadingPositions?.[filePath];
           const targetHeading = (lastActive && headings.some(h => h.heading === lastActive.heading && h.position.start.line === lastActive.position.start.line))
             ? lastActive
@@ -393,13 +395,15 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
           }
 
           scrollWithRetry(view, targetHeading, 'auto', () => {
-            const widget = this.floatingWidgets.get(view);
             if (widget?.core) {
               widget.core.setActiveHeadingManually(targetHeading);
             }
             const sidebarLeaves = this.app.workspace.getLeavesOfType(BIDI_FLOW_VIEW_TYPE);
             for (const sl of sidebarLeaves) {
               if (sl.view instanceof BidiFlowSidebarView && sl.view.core) {
+                if (sl.view.core.getHeadingCount() === 0) {
+                  sl.view.core.setView(view);
+                }
                 sl.view.core.setActiveHeadingManually(targetHeading);
               }
             }

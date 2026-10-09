@@ -327,41 +327,58 @@ export function scrollToHeadingInReadingView(
   const targetLine = heading.position.start.line;
   const preview = view.previewMode;
   const container = preview?.containerEl;
-  if (!container) return false;
-
-  const headingEls = Array.from(
-    container.querySelectorAll<HTMLHeadingElement>('h1, h2, h3, h4, h5, h6')
-  );
-  const cleanTarget = cleanHeadingText(heading.heading);
-  const targetEl = headingEls.find(el => {
-    const dataH = el.getAttribute('data-heading');
-    const textH = el.textContent?.trim();
-    return (
-      dataH === heading.heading ||
-      textH === heading.heading.trim() ||
-      (dataH && cleanHeadingText(dataH) === cleanTarget) ||
-      (textH && cleanHeadingText(textH) === cleanTarget)
+  const findTargetEl = (): HTMLHeadingElement | undefined => {
+    const headingEls = Array.from(
+      container.querySelectorAll<HTMLHeadingElement>('h1, h2, h3, h4, h5, h6')
     );
-  });
+    const cleanTarget = cleanHeadingText(heading.heading);
+    return headingEls.find(el => {
+      const dataH = el.getAttribute('data-heading');
+      const textH = el.textContent?.trim();
+      return (
+        dataH === heading.heading ||
+        textH === heading.heading.trim() ||
+        (dataH && cleanHeadingText(dataH) === cleanTarget) ||
+        (textH && cleanHeadingText(textH) === cleanTarget)
+      );
+    });
+  };
 
+  const targetEl = findTargetEl();
   if (targetEl) {
     targetEl.scrollIntoView({ behavior, block: 'start' });
     return true;
   }
 
   // Ensure preview.applyScroll is also called for accurate virtual positioning
+  let applied = false;
   try {
     const previewRenderer = (preview as unknown as { renderer?: { applyScrollDelayed?: (line: number) => void; applyScroll?: (line: number) => boolean } })?.renderer;
     if (typeof previewRenderer?.applyScrollDelayed === 'function') {
       previewRenderer.applyScrollDelayed(targetLine);
+      applied = true;
     } else {
       const previewScroll = preview as unknown as MarkdownPreviewViewWithScroll;
       if (typeof previewScroll.applyScroll === 'function') {
         previewScroll.applyScroll(targetLine);
+        applied = true;
       }
     }
   } catch {
     // Ignore
+  }
+
+  // Once virtual preview renders the DOM elements, fine-tune position directly to the heading element
+  // to avoid line-estimation offset drift between edit and reading view
+  if (applied) {
+    window.setTimeout(() => {
+      if (!view.containerEl.isConnected) return;
+      const delayedEl = findTargetEl();
+      if (delayedEl) {
+        delayedEl.scrollIntoView({ behavior: 'auto', block: 'start' });
+      }
+    }, 120);
+    return true;
   }
 
   return false;

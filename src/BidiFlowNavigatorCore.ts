@@ -177,12 +177,10 @@ export class BidiFlowNavigatorCore extends Component {
     });
     setIcon(this.modeToggleBtn, this.currentWindowMode === 'full-height' ? 'minimize-2' : 'maximize-2');
     setTooltip(this.modeToggleBtn, this.currentWindowMode === 'full-height' ? tr.toggleHeightFloating : tr.toggleHeightFull);
-    if (this.onToggleMaximizeCallback) {
-      this.modeToggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.onToggleMaximizeCallback?.();
-      });
-    }
+    this.modeToggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.onToggleMaximizeCallback?.();
+    });
 
     this.collapseBtn = windowControlsEl.createEl('button', {
       cls: 'clickable-icon bidi-flow-btn bidi-flow-btn-collapse',
@@ -190,12 +188,10 @@ export class BidiFlowNavigatorCore extends Component {
     });
     setIcon(this.collapseBtn, 'minus');
     setTooltip(this.collapseBtn, tr.minimize);
-    if (this.onCollapseCallback) {
-      this.collapseBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.onCollapseCallback?.();
-      });
-    }
+    this.collapseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.onCollapseCallback?.();
+    });
 
     // Controls Row (Prev / Current / Next)
     const controlsRow = this.headerEl.createDiv({ cls: 'bidi-flow-controls-row' });
@@ -910,18 +906,6 @@ export class BidiFlowNavigatorCore extends Component {
   ): void {
     this.onToggleMaximizeCallback = onToggleMaximize;
     this.onCollapseCallback = onCollapse;
-    if (this.modeToggleBtn) {
-      this.modeToggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        onToggleMaximize();
-      });
-    }
-    if (this.collapseBtn) {
-      this.collapseBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        onCollapse();
-      });
-    }
   }
 
   public updateWindowControls(mode: NavigatorDisplayMode): void {
@@ -1028,7 +1012,7 @@ export class BidiFlowNavigatorCore extends Component {
     if (this.currentView && this.currentView.containerEl.isConnected) {
       return this.currentView;
     }
-    const app = (this.containerEl.ownerDocument?.defaultView as unknown as { app?: { workspace?: { getActiveViewOfType: (type: typeof MarkdownView) => MarkdownView | null } } })?.app;
+    const app = this.currentView?.app ?? (this.containerEl.ownerDocument?.defaultView as unknown as { app?: { workspace?: { getActiveViewOfType: (type: typeof MarkdownView) => MarkdownView | null } } })?.app;
     const active = app?.workspace?.getActiveViewOfType(MarkdownView);
     if (active && active.containerEl.isConnected) {
       this.currentView = active;
