@@ -1,7 +1,7 @@
 {
   "id": "bidi-flow-navigator",
   "name": "BiDi Flow Navigator",
-  "version": "1.2.3.1",
+  "version": "1.2.3",
   "minAppVersion": "1.7.2",
   "description": "A sleek, bidirectional (Persian/RTL & LTR) document heading navigator with active section scroll-spy, previous/next jump bar, and reading progress.",
   "author": "Mohammad Javad",

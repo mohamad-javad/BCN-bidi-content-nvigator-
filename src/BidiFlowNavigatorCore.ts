@@ -9,7 +9,7 @@ import {
 } from 'obsidian';
 import { BidiHeadingNode, BidiFlowSettings, SectionNavigationDirection, SurroundingHeadings, NavigatorDisplayMode } from './types';
 import { cleanHeadingText, toPersianDigits, isRtlText, detectDocumentDirection } from './utils';
-import { getActiveHeading, getSurroundingHeadings, scrollToHeading, getCodeMirrorView, MarkdownPreviewViewWithScroll } from './scrollSpy';
+import { getActiveHeading, getSurroundingHeadings, scrollToHeading, scrollWithRetry, getCodeMirrorView, MarkdownPreviewViewWithScroll } from './scrollSpy';
 import { t } from './i18n';
 
 export class BidiFlowNavigatorCore extends Component {
@@ -1002,7 +1002,7 @@ export class BidiFlowNavigatorCore extends Component {
     this.highlightActiveInTree();
     this.calculateReadingProgress();
 
-    scrollToHeading(this.currentView, target, 'smooth');
+    scrollWithRetry(this.currentView, target, 'smooth');
     if (this.currentView.editor) {
       try {
         this.currentView.editor.setCursor({ line: target.position.start.line, ch: 0 });
