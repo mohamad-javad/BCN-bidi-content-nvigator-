@@ -293,7 +293,7 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
         this.flushSaveSettings();
         if (file) {
           this.syncFloatingWidgets();
-          // Allow Obsidian event loop to finish mounting and binding leaf view
+          // Allow Obsidian to completely mount the leaf, parse doc, and settle layout
           window.setTimeout(() => {
             const leaves = this.app.workspace.getLeavesOfType('markdown');
             const targetLeaf = leaves.find(l => (l.view as MarkdownView)?.file?.path === file.path);
@@ -301,7 +301,7 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
             if (view && view.file?.path === file.path) {
               void this.restoreHeadingForView(view, file, true);
             }
-          }, 35);
+          }, 100);
         }
       })
     );
@@ -381,19 +381,68 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
           // Lock position saving immediately so transient 0-scroll events during mode switch don't overwrite the heading!
           this.restoringFiles.add(filePath);
 
-          // Obsidian natively maintains the reader/editor position during mode switch.
-          // We do NOT force a synthetic scroll here to avoid backwards-drift loops or jump-to-top.
-          // Once the view settles in the new mode, read the current heading and synchronize the navigator UI smoothly.
+          const saved = this.settings.savedHeadingPositions?.[filePath];
+          const headingBeforeSwitch = this.lastActiveHeadings.get(view);
+          const targetLine = headingBeforeSwitch ? headingBeforeSwitch.position.start.line : (saved ? saved.line : 0);
+
+          // Allow the new mode DOM to mount, then assert target position using Obsidian's native ephemeralState
           window.setTimeout(() => {
             if (!view.containerEl.isConnected || view.file?.path !== filePath) {
               this.restoringFiles.delete(filePath);
               return;
             }
 
+            if (targetLine > 0) {
+              try {
+                view.setEphemeralState({ line: targetLine });
+              } catch {
+                // Ignore
+              }
+
+              if (view.getMode() === 'preview') {
+                const preview = view.previewMode;
+                try {
+                  const previewRenderer = (preview as unknown as { renderer?: { applyScrollDelayed?: (line: number) => void } })?.renderer;
+                  if (typeof previewRenderer?.applyScrollDelayed === 'function') {
+                    previewRenderer.applyScrollDelayed(targetLine);
+                  } else if (typeof (preview as unknown as { applyScroll?: (line: number) => void })?.applyScroll === 'function') {
+                    (preview as unknown as { applyScroll?: (line: number) => void }).applyScroll!(targetLine);
+                  }
+                } catch {
+                  // Ignore
+                }
+              } else {
+                const editor = view.editor;
+                if (editor) {
+                  try {
+                    editor.setCursor({ line: Math.min(targetLine, Math.max(0, editor.lineCount() - 1)), ch: 0 });
+                  } catch {
+                    // Ignore
+                  }
+                  const scroller = view.contentEl.querySelector<HTMLElement>('.cm-scroller');
+                  const cm = getCodeMirrorView(editor);
+                  if (scroller && cm?.state?.doc) {
+                    try {
+                      const line1 = Math.min(cm.state.doc.lines, Math.max(1, targetLine + 1));
+                      const block = cm.lineBlockAt ? cm.lineBlockAt(cm.state.doc.line(line1).from) : null;
+                      if (block) {
+                        scroller.scrollTo({ top: block.top, behavior: 'auto' });
+                      }
+                    } catch {
+                      // Ignore
+                    }
+                  }
+                }
+              }
+            }
+
             const cache = this.app.metadataCache.getFileCache(file);
             const headings = cache?.headings;
             if (headings && headings.length > 0) {
-              const active = getActiveHeading(view, headings, 100) ?? this.lastActiveHeadings.get(view);
+              const active = (headingBeforeSwitch && headings.some(h => h.position.start.line === headingBeforeSwitch.position.start.line))
+                ? headingBeforeSwitch
+                : (getActiveHeading(view, headings, 100) ?? headings[0]);
+
               if (active) {
                 this.lastActiveHeadings.set(view, active);
                 this.saveHeadingPosition(filePath, active);
@@ -414,8 +463,10 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
               }
             }
 
-            this.restoringFiles.delete(filePath);
-          }, 200);
+            window.setTimeout(() => {
+              this.restoringFiles.delete(filePath);
+            }, 100);
+          }, 120);
         } else if (!prevMode) {
           this.viewModeMap.set(view, currentMode);
         }
@@ -640,6 +691,13 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
       }
 
       const targetLine = saved.line;
+
+      // Native Obsidian Ephemeral State scroll
+      try {
+        view.setEphemeralState({ line: targetLine });
+      } catch {
+        // Ignore
+      }
 
       // 1. Instant line & cursor scroll (Fast Path)
       if (view.getMode() === 'preview') {

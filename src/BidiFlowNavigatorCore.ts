@@ -769,16 +769,6 @@ export class BidiFlowNavigatorCore extends Component {
     const surrounding = getSurroundingHeadings(this.rawHeadings, active);
     this.activeIndex = surrounding.activeIndex;
 
-    // Background sync: align editor cursor with active heading in reading view
-    // so when the user toggles back to edit mode, Obsidian natively opens at this exact section
-    if (active && this.currentView.getMode() === 'preview' && this.currentView.editor) {
-      try {
-        this.currentView.editor.setCursor({ line: active.position.start.line, ch: 0 });
-      } catch {
-        // Ignore
-      }
-    }
-
     this.updateHeaderDisplay(surrounding);
     this.highlightActiveInTree();
     this.calculateReadingProgress();
