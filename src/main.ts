@@ -292,10 +292,15 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
         this.flushSaveSettings();
         if (file) {
           this.syncFloatingWidgets();
-          const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-          if (view && view.file?.path === file.path) {
-            void this.restoreHeadingForView(view, file, true);
-          }
+          // Allow Obsidian event loop to finish mounting and binding leaf view
+          window.setTimeout(() => {
+            const leaves = this.app.workspace.getLeavesOfType('markdown');
+            const targetLeaf = leaves.find(l => (l.view as MarkdownView)?.file?.path === file.path);
+            const view = (targetLeaf?.view as MarkdownView) ?? this.app.workspace.getActiveViewOfType(MarkdownView);
+            if (view && view.file?.path === file.path) {
+              void this.restoreHeadingForView(view, file, true);
+            }
+          }, 35);
         }
       })
     );
@@ -679,9 +684,16 @@ export default class BidiFlowNavigatorPlugin extends Plugin {
         }
       }
 
+      // Verification pass: Obsidian's internal leaf layout often resets scroll position
+      // after the first event cycle. A quick re-assertion after 120ms ensures the heading stays locked.
       window.setTimeout(() => {
-        this.restoringFiles.delete(file.path);
-      }, 300);
+        if (view.containerEl.isConnected && view.file?.path === file.path) {
+          scrollToHeading(view, targetHeading, 'auto');
+        }
+        window.setTimeout(() => {
+          this.restoringFiles.delete(file.path);
+        }, 120);
+      }, 120);
 
       return true;
     };

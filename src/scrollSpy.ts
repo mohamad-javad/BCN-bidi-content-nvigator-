@@ -288,20 +288,41 @@ export function scrollToHeadingInSourceMode(
     // Ignore
   }
 
-  // 2. Use Obsidian's native subView applyScroll to position heading at top
+  // 2. Direct CodeMirror 6 scroll on cm-scroller for immediate, guaranteed top positioning
   let scrolled = false;
-  try {
-    const subView = (view as unknown as { currentMode?: MarkdownSubView; editMode?: MarkdownSubView }).currentMode ??
-                    (view as unknown as { editMode?: MarkdownSubView }).editMode;
-    if (typeof subView?.applyScroll === 'function') {
-      subView.applyScroll(targetLine);
-      scrolled = true;
+  const scroller = view.contentEl.querySelector<HTMLElement>('.cm-scroller');
+  if (scroller) {
+    const cm = getCodeMirrorView(editor);
+    if (cm?.state?.doc) {
+      try {
+        const line1 = Math.min(cm.state.doc.lines, Math.max(1, targetLine + 1));
+        const linePos = cm.state.doc.line(line1).from;
+        const block = cm.lineBlockAt ? cm.lineBlockAt(linePos) : null;
+        if (block) {
+          scroller.scrollTo({ top: block.top, behavior });
+          scrolled = true;
+        }
+      } catch {
+        // Fallback below
+      }
     }
-  } catch {
-    // Ignore
   }
 
-  // 3. Fallback: scrollIntoView without centering jump (center = false)
+  // 3. Fallback: Obsidian native subView applyScroll
+  if (!scrolled) {
+    try {
+      const subView = (view as unknown as { currentMode?: MarkdownSubView; editMode?: MarkdownSubView }).currentMode ??
+                      (view as unknown as { editMode?: MarkdownSubView }).editMode;
+      if (typeof subView?.applyScroll === 'function') {
+        subView.applyScroll(targetLine);
+        scrolled = true;
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  // 4. Fallback: editor scrollIntoView
   if (!scrolled) {
     try {
       editor.scrollIntoView(
