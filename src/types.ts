@@ -31,6 +31,7 @@ export interface BidiFlowSettings {
   showPrevSiblingBtn: boolean;
   deepHeadingJumpTarget: 'parent' | 'sibling';
   floatingTopPx?: number;
+  mobileFloatingTopPx?: number;
 }
 
 export interface SavedHeadingPosition {

@@ -29,9 +29,9 @@ export class BidiFlowFloatingWidget extends Component {
     this.settings = settings;
     this.onHeadingChange = onHeadingChange;
     this.onPositionChange = onPositionChange;
-    this.floatingTopPx = typeof settings.floatingTopPx === 'number'
-      ? settings.floatingTopPx
-      : (Platform.isMobile ? 88 : 48);
+    this.floatingTopPx = Platform.isMobile
+      ? (typeof settings.mobileFloatingTopPx === 'number' ? settings.mobileFloatingTopPx : 88)
+      : (typeof settings.floatingTopPx === 'number' ? settings.floatingTopPx : 48);
     this.currentMode = (Platform.isMobile && settings.defaultMode === 'full-height') ? 'floating' : (settings.defaultMode || 'floating');
     if (this.currentMode !== 'mini') {
       this.previousExpandedMode = this.currentMode;
@@ -102,8 +102,10 @@ export class BidiFlowFloatingWidget extends Component {
 
     this.core.setView(this.view);
 
-    if (this.currentMode === 'floating' && this.floatingTopPx != null) {
+    if (!Platform.isMobile && this.currentMode === 'floating' && this.floatingTopPx != null) {
       this.hostContainerEl.setCssStyles({ top: `${this.floatingTopPx}px` });
+    } else if (Platform.isMobile && this.currentMode === 'floating' && typeof this.settings.mobileFloatingTopPx === 'number') {
+      this.hostContainerEl.setCssStyles({ top: `${this.settings.mobileFloatingTopPx}px` });
     } else {
       this.hostContainerEl.setCssStyles({ top: '' });
     }
@@ -170,7 +172,11 @@ export class BidiFlowFloatingWidget extends Component {
       e.stopPropagation();
 
       if (typeof this.floatingTopPx === 'number') {
-        this.settings.floatingTopPx = this.floatingTopPx;
+        if (Platform.isMobile) {
+          this.settings.mobileFloatingTopPx = this.floatingTopPx;
+        } else {
+          this.settings.floatingTopPx = this.floatingTopPx;
+        }
         this.onPositionChange?.(this.floatingTopPx);
       }
     };
@@ -200,8 +206,10 @@ export class BidiFlowFloatingWidget extends Component {
       this.hostContainerEl.addClass('is-collapsed');
     }
 
-    if (mode === 'floating' && this.floatingTopPx != null) {
+    if (!Platform.isMobile && mode === 'floating' && this.floatingTopPx != null) {
       this.hostContainerEl.setCssStyles({ top: `${this.floatingTopPx}px` });
+    } else if (Platform.isMobile && mode === 'floating' && typeof this.settings.mobileFloatingTopPx === 'number') {
+      this.hostContainerEl.setCssStyles({ top: `${this.settings.mobileFloatingTopPx}px` });
     } else {
       this.hostContainerEl.setCssStyles({ top: '' });
     }
@@ -268,10 +276,19 @@ export class BidiFlowFloatingWidget extends Component {
       this.toggleBtnEl.setAttribute('aria-label', tr.viewTitle);
       setTooltip(this.toggleBtnEl, tr.toggleNavigator);
     }
-    if (typeof settings.floatingTopPx === 'number' && settings.floatingTopPx !== this.floatingTopPx) {
-      this.floatingTopPx = settings.floatingTopPx;
-      if (this.currentMode === 'floating' && this.hostContainerEl) {
-        this.hostContainerEl.setCssStyles({ top: `${this.floatingTopPx}px` });
+    if (Platform.isMobile) {
+      if (typeof settings.mobileFloatingTopPx === 'number' && settings.mobileFloatingTopPx !== this.floatingTopPx) {
+        this.floatingTopPx = settings.mobileFloatingTopPx;
+        if (this.currentMode === 'floating' && this.hostContainerEl) {
+          this.hostContainerEl.setCssStyles({ top: `${this.floatingTopPx}px` });
+        }
+      }
+    } else {
+      if (typeof settings.floatingTopPx === 'number' && settings.floatingTopPx !== this.floatingTopPx) {
+        this.floatingTopPx = settings.floatingTopPx;
+        if (this.currentMode === 'floating' && this.hostContainerEl) {
+          this.hostContainerEl.setCssStyles({ top: `${this.floatingTopPx}px` });
+        }
       }
     }
     this.core?.updateSettings(settings);
