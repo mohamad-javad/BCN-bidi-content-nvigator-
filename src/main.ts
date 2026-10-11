@@ -4,7 +4,7 @@ import { BidiFlowSidebarView, BIDI_FLOW_VIEW_TYPE } from './BidiFlowSidebarView'
 import { BidiFlowNavigatorCore } from './BidiFlowNavigatorCore';
 import { BidiFlowFloatingWidget } from './BidiFlowFloatingWidget';
 import { BidiFlowSettingTab } from './settings';
-import { scrollWithRetry, getActiveHeading } from './scrollSpy';
+import { scrollWithRetry } from './scrollSpy';
 import { cleanHeadingText } from './utils';
 import { t } from './i18n';
 

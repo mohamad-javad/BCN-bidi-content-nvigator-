@@ -103,9 +103,9 @@ export class BidiFlowFloatingWidget extends Component {
     this.core.setView(this.view);
 
     if (this.currentMode === 'floating' && this.floatingTopPx != null) {
-      this.hostContainerEl.style.top = `${this.floatingTopPx}px`;
+      this.hostContainerEl.setCssStyles({ top: `${this.floatingTopPx}px` });
     } else {
-      this.hostContainerEl.style.top = '';
+      this.hostContainerEl.setCssStyles({ top: '' });
     }
 
     this.initVerticalDrag();
@@ -130,7 +130,9 @@ export class BidiFlowFloatingWidget extends Component {
       isDragging = true;
       try {
         handleEl.setPointerCapture(e.pointerId);
-      } catch {}
+      } catch (_err) {
+        // Pointer capture may fail on unsupported devices or detached elements
+      }
       handleEl.addClass('is-dragging');
       this.hostContainerEl.addClass('is-dragging');
       document.body.addClass('bidi-flow-is-dragging');
@@ -150,7 +152,7 @@ export class BidiFlowFloatingWidget extends Component {
       const maxTop = Math.max(minTop, parentHeight - Math.min(cardHeight, 90));
 
       const newTop = Math.min(Math.max(minTop, Math.round(initialTop + deltaY)), maxTop);
-      this.hostContainerEl.style.top = `${newTop}px`;
+      this.hostContainerEl.setCssStyles({ top: `${newTop}px` });
       this.floatingTopPx = newTop;
     });
 
@@ -159,7 +161,9 @@ export class BidiFlowFloatingWidget extends Component {
       isDragging = false;
       try {
         handleEl.releasePointerCapture(e.pointerId);
-      } catch {}
+      } catch (_err) {
+        // Pointer capture may already be released
+      }
       handleEl.removeClass('is-dragging');
       this.hostContainerEl.removeClass('is-dragging');
       document.body.removeClass('bidi-flow-is-dragging');
@@ -197,9 +201,9 @@ export class BidiFlowFloatingWidget extends Component {
     }
 
     if (mode === 'floating' && this.floatingTopPx != null) {
-      this.hostContainerEl.style.top = `${this.floatingTopPx}px`;
+      this.hostContainerEl.setCssStyles({ top: `${this.floatingTopPx}px` });
     } else {
-      this.hostContainerEl.style.top = '';
+      this.hostContainerEl.setCssStyles({ top: '' });
     }
 
     this.core?.updateWindowControls(mode);
@@ -267,7 +271,7 @@ export class BidiFlowFloatingWidget extends Component {
     if (typeof settings.floatingTopPx === 'number' && settings.floatingTopPx !== this.floatingTopPx) {
       this.floatingTopPx = settings.floatingTopPx;
       if (this.currentMode === 'floating' && this.hostContainerEl) {
-        this.hostContainerEl.style.top = `${this.floatingTopPx}px`;
+        this.hostContainerEl.setCssStyles({ top: `${this.floatingTopPx}px` });
       }
     }
     this.core?.updateSettings(settings);
